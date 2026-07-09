@@ -1,0 +1,100 @@
+// Deutsches Wörterbuch (Basis-Sprache). Schlüssel sind nach Bereich gruppiert.
+// Neue Texte hier eintragen und in en.ts (und weiteren Sprachen) übersetzen.
+export const de: Record<string, string> = {
+  // ── Navigation: Abschnitte ──
+  'nav.section.overview': 'Übersicht',
+  'nav.section.workloads': 'Workloads',
+  'nav.section.system': 'System',
+  'nav.section.ai': 'KI',
+
+  // ── Navigation: Einträge ──
+  'nav.dashboard': 'Dashboard',
+  'nav.taskmanager': 'Taskmanager',
+  'nav.terminal': 'Terminal',
+  'nav.containers': 'Container',
+  'nav.apps': 'App-Vorlagen',
+  'nav.vms': 'Virtuelle Maschinen',
+  'nav.networks': 'Netzwerke & VLANs',
+  'nav.proxy': 'HTTPS & Proxy',
+  'nav.security': 'Sicherheit',
+  'nav.antivirus': 'Virenschutz',
+  'nav.updates': 'System-Updates',
+  'nav.packages': 'Paketverwaltung',
+  'nav.automation': 'Automatisierung',
+  'nav.backups': 'Backups',
+  'nav.files': 'Datei-Manager',
+  'nav.shares': 'SMB-Freigaben',
+  'nav.users': 'Benutzer',
+  'nav.settings': 'Einstellungen',
+  'nav.ai': 'KI-Modelle',
+  'nav.aihub': 'KI-Zentrale',
+
+  // ── Sidebar / Chrome ──
+  'sidebar.updateAvailable': 'Update verfügbar',
+  'sidebar.expand': 'Ausklappen',
+  'sidebar.collapse': 'Einklappen',
+  'sidebar.toggleTheme': 'Theme wechseln',
+  'sidebar.logout': 'Abmelden',
+
+  // ── Häufige Aktionen (überall genutzt) ──
+  'common.save': 'Speichern',
+  'common.cancel': 'Abbrechen',
+  'common.delete': 'Löschen',
+  'common.create': 'Erstellen',
+  'common.edit': 'Bearbeiten',
+  'common.close': 'Schließen',
+  'common.refresh': 'Aktualisieren',
+  'common.search': 'Suchen',
+  'common.loading': 'Lädt…',
+  'common.error': 'Fehler',
+  'common.confirm': 'Bestätigen',
+  'common.yes': 'Ja',
+  'common.no': 'Nein',
+  'common.all': 'Alle',
+  'common.optional': 'optional',
+  'common.required': 'erforderlich',
+
+  // ── Sprache (Einstellungen) ──
+  'settings.language': 'Sprache',
+  'settings.language.desc': 'Sprache der Oberfläche. Die Auswahl wird im Browser gespeichert.',
+
+  // ── Seiten-Titel & Untertitel (Topbar) ──
+  'page.proxy.title': 'HTTPS & Reverse-Proxy',
+  'page.terminal.subtitle': 'Root-Shell auf dem Server',
+  'page.automation.subtitle': 'Cronjobs & Autostart',
+  'page.containers.subtitle': '{running} läuft · {total} gesamt',
+  'page.taskmanager.subtitle': '{running} aktiv · {total} Prozesse gesamt',
+  'page.vms.subtitle': '{running} laufen · {total} gesamt',
+  'page.users.subtitle': '{logins} Logins · {linux} Linux-Benutzer',
+  'page.networks.subtitle': '{n} Docker-Netzwerke',
+  'page.updates.subtitle': 'Paketmanager: {manager}',
+  'page.security.subtitle': 'Geprüft: {time}',
+  'page.settings.subtitle': 'Vault-Hub v{version}',
+  'page.proxy.subtitle': 'Caddy {state} · {https}/{total} mit HTTPS',
+  'page.proxy.running': 'läuft',
+  'page.proxy.stopped': 'gestoppt',
+  'page.backups.subtitle': '{n} Backups · {size} · {dir}',
+  'page.packages.subtitle': '{manager} · {n} installiert · {size}',
+  'page.ai.subtitle': '{n} Modelle · {size} belegt',
+  'page.aihub.subtitle.active': '{n} Modell(e) aktiv im Arbeitsspeicher',
+  'page.notFound': 'Container nicht gefunden',
+  'page.back': '← Zurück',
+
+  // ── Reverse-Proxy (Einstellungen) ──
+  'settings.proxy': 'Reverse-Proxy',
+  'settings.proxy.desc': 'Blendet die Seite „HTTPS & Reverse-Proxy" in der Navigation ein. Standardmäßig ausgeblendet.',
+  'settings.proxy.enable': 'Reverse-Proxy anzeigen',
+  'settings.proxy.backend': 'Backend',
+  'settings.proxy.backend.caddy': 'Caddy (automatisches HTTPS)',
+  'settings.proxy.backend.nginx': 'nginx (geplant)',
+  'settings.proxy.backend.traefik': 'Traefik (geplant)',
+  'settings.proxy.backend.hint': 'Caddy bietet automatisches HTTPS über eine interne CA – ohne Domain. nginx/Traefik sind vorgesehen, aber noch nicht verfügbar.',
+
+  // ── Auto: dynamische Backend-Meldungen (Schlüssel + Platzhalter) ──
+  'err.dockerhub_unreachable': 'Docker Hub nicht erreichbar: {detail}',
+  'err.hostport_in_use': 'Host-Port bereits belegt: {list}. Übernimm die vorgeschlagenen freien Ports – oder gib dem Container über ein Macvlan-Netzwerk eine eigene IP (dann entfällt der Port-Konflikt, z. B. für AdGuard/Pi-hole auf Port 53).',
+  'err.container_name_exists': 'Ein Container namens „{name}" existiert bereits. Bitte einen anderen Namen wählen.',
+  'err.hostport_allocated': 'Ein benötigter Host-Port ist bereits belegt (z. B. Port 53 durch systemd-resolved). Wähle einen anderen Host-Port oder gib dem Container über ein Macvlan-Netzwerk eine eigene IP.',
+  'err.too_many_attempts': 'Zu viele Fehlversuche. Bitte in {minutes} Minuten erneut versuchen.',
+  'err.file_too_large': 'Datei zu groß (max {kb} KB)',
+};

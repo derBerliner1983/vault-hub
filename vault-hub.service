@@ -1,0 +1,21 @@
+[Unit]
+Description=Vault-Hub – Linux Server Management
+Documentation=https://github.com/derberliner1983/docker-gui
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=vault-hub
+Group=docker
+WorkingDirectory=/opt/vault-hub/backend
+Environment=NODE_ENV=production
+Environment=PORT=4200
+Environment=DATA_DIR=/var/lib/vault-hub
+ExecStart=/usr/bin/node dist/server.js
+Restart=always
+RestartSec=5
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

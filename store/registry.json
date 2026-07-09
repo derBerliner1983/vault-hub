@@ -1,0 +1,4 @@
+{
+  "$comment": "Vault-Hub Store-Registry. Jede App/Erweiterung braucht eine 'version' fuer den Update-Vergleich. Der Store-Ort ist ueber STORE_URL/STORE_REPO konfigurierbar; standardmaessig kommt diese Datei mit dem Repo mit.",
+  "apps": []
+}

@@ -1,0 +1,72 @@
+:root {
+  /* Light mode */
+  --color-bg: #F7F7F8;
+  --color-surface: #FFFFFF;
+  --color-surface-sunken: #F1F1F3;
+  --color-fg: #0B0B0F;
+  --color-muted: #52525B;
+  --color-subtle: #71717A;
+  --color-faint: #A1A1AA;
+
+  /* Accent – Emerald */
+  --color-accent: #10B981;
+  --color-accent-strong: #059669;
+  --color-accent-soft: rgba(16, 185, 129, 0.10);
+  --color-accent-fg: #052E20;
+
+  /* Status */
+  --color-success: #10B981;
+  --color-warning: #D97706;
+  --color-error: #DC2626;
+  --color-info: #2563EB;
+
+  /* Borders & States */
+  --color-border: rgba(0, 0, 0, 0.07);
+  --color-border-strong: rgba(0, 0, 0, 0.12);
+  --color-hover: rgba(0, 0, 0, 0.035);
+  --color-active: rgba(0, 0, 0, 0.055);
+
+  /* Layout */
+  --sidebar-width: 232px;
+  --topbar-height: 56px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 1px 3px rgba(0, 0, 0, 0.06);
+
+  /* Typography */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+[data-theme="dark"] {
+  --color-bg: #1C1C1F;
+  --color-surface: #26262B;
+  --color-surface-sunken: #18181B;
+  --color-fg: #F4F4F5;
+  --color-muted: #A1A1AA;
+  --color-subtle: #71717A;
+  --color-faint: #52525B;
+
+  --color-accent: #34D399;
+  --color-accent-strong: #6EE7B7;
+  --color-accent-soft: rgba(52, 211, 153, 0.10);
+
+  --color-success: #34D399;
+  --color-warning: #FBBF24;
+  --color-error: #F87171;
+  --color-info: #60A5FA;
+
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+  --color-hover: rgba(255, 255, 255, 0.035);
+  --color-active: rgba(255, 255, 255, 0.055);
+
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 2px 6px rgba(0, 0, 0, 0.3);
+}
