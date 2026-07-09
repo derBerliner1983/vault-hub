@@ -1,28 +1,64 @@
 import type { FastifyInstance } from 'fastify';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 import { auditQueries } from '../db/index';
+import { isRoot, privExec, safeExec } from '../lib/privilege';
 
 const execFileP = promisify(execFile);
+const requireCJS = createRequire(__filename);
 
 const DATA_DIR = process.env.DATA_DIR || '/var/lib/vault-hub';
 const PLUGINS_DIR = path.join(DATA_DIR, 'plugins');
+
+export interface ServiceToggleSpec {
+  label?: string;
+  service: string;
+  enableCmd?: string;
+  disableCmd?: string;
+}
 
 export interface PluginManifest {
   id: string;
   name: string;
   version: string;
   icon?: string;
-  description?: string;
+  description?: string | Record<string, string>;
   type?: 'app' | 'extension';
   source?: string;
   permissions?: string[];
-  contributes?: Record<string, unknown>;
+  i18n?: Record<string, Record<string, string>>;
+  // Optionales Plugin-Backend (fertiges CommonJS-Modul mit register(fastify, ctx)).
+  backend?: { type?: string; entry: string };
+  contributes?: {
+    nav?: { section?: string; label: string; route: string; icon?: string };
+    settingsPanel?: { label: string; ui?: string };
+    serviceToggle?: ServiceToggleSpec;
+    dashboardWidget?: { label: string; ui?: string };
+    [k: string]: unknown;
+  };
+}
+
+/** Kontext, den der Kern jedem Plugin-Backend übergibt. */
+export interface PluginContext {
+  pluginId: string;
+  pluginDir: string;
+  isRoot: boolean;
+  privExec: typeof privExec;
+  safeExec: typeof safeExec;
+  audit: (userId: number | null, action: string, target?: string | null) => void;
+}
+
+async function readManifest(id: string): Promise<PluginManifest | null> {
+  try {
+    const raw = await fsp.readFile(path.join(PLUGINS_DIR, id, 'plugin.json'), 'utf8');
+    return JSON.parse(raw) as PluginManifest;
+  } catch { return null; }
 }
 
 /** id auf sichere Zeichen begrenzen (verhindert Pfad-Traversal). */
@@ -136,6 +172,34 @@ export async function pluginRoutes(fastify: FastifyInstance) {
     }
   );
 
+  // Dienst-Status einer System-Erweiterung (serviceToggle) abfragen
+  fastify.get<{ Params: { id: string } }>('/api/plugins/:id/service', { preHandler: requireAdmin }, async (req, reply) => {
+    const id = safeId(req.params.id);
+    const svc = (await readManifest(id))?.contributes?.serviceToggle;
+    if (!svc) return reply.status(404).send({ error: 'Plugin hat keinen Dienst-Schalter' });
+    let active = false;
+    try { active = safeExec(`systemctl is-active ${svc.service}`).trim() === 'active'; } catch { /* inaktiv/unbekannt */ }
+    reply.send({ active, service: svc.service });
+  });
+
+  // System-Erweiterung ein-/ausschalten (serviceToggle)
+  fastify.post<{ Params: { id: string }; Body: { enabled?: boolean } }>('/api/plugins/:id/service', { preHandler: requireAdmin }, async (req, reply) => {
+    const id = safeId(req.params.id);
+    const svc = (await readManifest(id))?.contributes?.serviceToggle;
+    if (!svc) return reply.status(404).send({ error: 'Plugin hat keinen Dienst-Schalter' });
+    const enabled = !!req.body?.enabled;
+    const cmd = enabled
+      ? (svc.enableCmd || `systemctl enable --now ${svc.service}`)
+      : (svc.disableCmd || `systemctl disable --now ${svc.service}`);
+    try {
+      privExec(cmd, { timeout: 20000 });
+      auditQueries.log.run(req.user.id, enabled ? 'plugin.service.enable' : 'plugin.service.disable', id);
+      reply.send({ ok: true, active: enabled });
+    } catch (err) {
+      reply.status(500).send({ error: err instanceof Error ? err.message : 'Dienst-Aktion fehlgeschlagen' });
+    }
+  });
+
   // Plugin-UI ausliefern (iframe-Host): /app/<id>/… → PLUGINS_DIR/<id>/ui/…
   fastify.get('/app/:id/*', async (req, reply) => {
     const id = safeId((req.params as { id: string }).id);
@@ -156,4 +220,39 @@ export async function pluginRoutes(fastify: FastifyInstance) {
     reply.type(types[ext] || 'application/octet-stream');
     return reply.send(fs.createReadStream(finalPath));
   });
+}
+
+/**
+ * Plugin-Backends laden: für jedes installierte Plugin mit `backend.entry` das
+ * (fertig gebaute) CommonJS-Modul laden und dessen register(fastify, ctx)
+ * aufrufen. Muss vor fastify.listen() geschehen. Neu installierte Backend-Plugins
+ * werden nach einem Neustart aktiv (die Frontend-Navigation erscheint sofort).
+ */
+export async function loadPluginBackends(fastify: FastifyInstance): Promise<void> {
+  const manifests = await readManifestsSafe();
+  for (const m of manifests) {
+    if (!m.backend?.entry) continue;
+    const id = safeId(m.id);
+    const pluginDir = path.join(PLUGINS_DIR, id);
+    const entryPath = path.normalize(path.join(pluginDir, m.backend.entry));
+    if (!entryPath.startsWith(pluginDir) || !fs.existsSync(entryPath)) continue;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mod: any = requireCJS(entryPath);
+      const register = mod.register || mod.default || mod;
+      if (typeof register !== 'function') continue;
+      const ctx: PluginContext = {
+        pluginId: id,
+        pluginDir,
+        isRoot,
+        privExec,
+        safeExec,
+        audit: (userId, action, target) => { try { auditQueries.log.run(userId, action, target ?? null); } catch { /* */ } },
+      };
+      await register(fastify, ctx);
+      fastify.log.info(`Plugin-Backend geladen: ${id}`);
+    } catch (err) {
+      fastify.log.warn(`Plugin-Backend ${id} konnte nicht geladen werden: ${err instanceof Error ? err.message : err}`);
+    }
+  }
 }

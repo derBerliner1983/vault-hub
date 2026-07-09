@@ -1,0 +1,16 @@
+{
+  "id": "terminal",
+  "name": "Terminal",
+  "version": "1.0.0",
+  "icon": "terminal",
+  "type": "app",
+  "description": {
+    "de": "Interaktive Root-Shell auf dem Server (wie in Core-Hub).",
+    "en": "Interactive root shell on the server (like in Core-Hub)."
+  },
+  "permissions": ["system.exec"],
+  "backend": { "type": "node", "entry": "backend/index.js" },
+  "contributes": {
+    "nav": { "section": "SYSTEM", "label": "Terminal", "route": "/app/terminal", "icon": "terminal" }
+  }
+}

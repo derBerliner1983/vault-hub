@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import qrcode from 'qrcode-generator';
 import {
-  KeyRound, ShieldCheck, ArrowUpCircle, RefreshCw, CheckCircle2, Server, Package, Globe,
+  KeyRound, ShieldCheck, ArrowUpCircle, RefreshCw, CheckCircle2, Server, Package, Globe, Puzzle,
 } from 'lucide-react';
 import { Topbar } from '../components/layout/Topbar';
 import { tt, useI18n, LANGUAGES } from '../lib/i18n';
 import { api } from '../lib/api';
-import { fetchStore, fetchInstalledPlugins, installPlugin, type StoreItem } from '../lib/plugins';
+import {
+  fetchStore, fetchInstalledPlugins, installPlugin, useInstalledPlugins,
+  type StoreItem, type PluginManifest,
+} from '../lib/plugins';
 
-type Tab = 'account' | 'updates' | 'apps';
+type Tab = 'account' | 'extensions' | 'updates' | 'apps';
 
 interface VersionInfo {
   current: string; latest: string | null; updateAvailable: boolean;
@@ -24,10 +27,12 @@ export function Settings() {
       <div className="page">
         <div className="tabs" style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--color-border)' }}>
           <TabBtn active={tab === 'account'} onClick={() => setTab('account')} icon={<KeyRound size={15} />} label={tt('Account')} />
+          <TabBtn active={tab === 'extensions'} onClick={() => setTab('extensions')} icon={<Puzzle size={15} />} label={tt('Erweiterungen')} />
           <TabBtn active={tab === 'updates'} onClick={() => setTab('updates')} icon={<ArrowUpCircle size={15} />} label={tt('Version & Updates')} />
           <TabBtn active={tab === 'apps'} onClick={() => setTab('apps')} icon={<Package size={15} />} label={tt('Updatefähige Apps')} />
         </div>
         {tab === 'account' && <AccountPanel />}
+        {tab === 'extensions' && <ExtensionsPanel />}
         {tab === 'updates' && <UpdatesPanel />}
         {tab === 'apps' && <AppUpdatesPanel />}
       </div>
@@ -52,6 +57,82 @@ function AccountPanel() {
       <PasswordCard />
       <TwoFactorCard />
       <LanguageCard />
+    </div>
+  );
+}
+
+// ─── Erweiterungen: System-Erweiterungen (Typ A) mit Dienst-Schalter/Panel ────
+
+function ExtensionsPanel() {
+  const { plugins, loading } = useInstalledPlugins();
+  const exts = plugins.filter((p) => p.contributes?.serviceToggle || p.contributes?.settingsPanel);
+
+  if (loading) return <div style={{ display: 'grid', placeItems: 'center', padding: 48 }}><span className="spinner" /></div>;
+  if (exts.length === 0) {
+    return (
+      <div className="card empty-state" style={{ textAlign: 'center', padding: '40px 24px' }}>
+        <Puzzle size={26} style={{ color: 'var(--color-accent)' }} />
+        <div style={{ fontWeight: 600, marginTop: 8 }}>{tt('Keine System-Erweiterungen installiert')}</div>
+        <div style={{ color: 'var(--color-subtle)', marginTop: 4 }}>{tt('Installiere z. B. „SSH-Zugang" aus dem Store, dann erscheint hier der Schalter.')}</div>
+      </div>
+    );
+  }
+  return <div className="stats-grid">{exts.map((p) => <ExtensionCard key={p.id} plugin={p} />)}</div>;
+}
+
+function ExtensionCard({ plugin }: { plugin: PluginManifest }) {
+  const svc = plugin.contributes?.serviceToggle;
+  const panel = plugin.contributes?.settingsPanel;
+  const [active, setActive] = useState<boolean | null>(svc ? null : false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const loadStatus = useCallback(async () => {
+    if (!svc) return;
+    try {
+      const r = await fetch(`/api/plugins/${plugin.id}/service`, { credentials: 'include' });
+      const d = await r.json();
+      setActive(!!d.active);
+    } catch { setActive(false); }
+  }, [plugin.id, svc]);
+  useEffect(() => { void loadStatus(); }, [loadStatus]);
+
+  const toggle = async () => {
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch(`/api/plugins/${plugin.id}/service`, {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !active }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Fehler');
+      setActive(!!d.active);
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Fehler'); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+        <Puzzle size={16} /> {plugin.name}
+        {svc && active !== null && (
+          <span className={`badge ${active ? 'badge--running' : 'badge--stopped'}`} style={{ marginLeft: 'auto' }}>
+            {active ? tt('Aktiv') : tt('Inaktiv')}
+          </span>
+        )}
+      </div>
+      {svc && (
+        <>
+          <div style={{ fontSize: 13, color: 'var(--color-subtle)' }}>{svc.label || svc.service}</div>
+          <button className={`btn btn--sm ${active ? 'btn--danger' : 'btn--primary'}`} onClick={toggle} disabled={busy || active === null}>
+            {active ? tt('Deaktivieren') : tt('Aktivieren')}
+          </button>
+        </>
+      )}
+      {panel?.ui?.startsWith('iframe:') && (
+        <iframe title={plugin.name} src={panel.ui.slice('iframe:'.length)} style={{ width: '100%', height: 240, border: 0, borderRadius: 8 }} />
+      )}
+      {err && <div style={{ fontSize: 13, color: 'var(--color-error)' }}>{err}</div>}
     </div>
   );
 }

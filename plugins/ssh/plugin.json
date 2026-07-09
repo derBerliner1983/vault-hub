@@ -1,0 +1,25 @@
+{
+  "id": "ssh",
+  "name": "SSH-Zugang",
+  "version": "1.0.0",
+  "icon": "terminal",
+  "type": "extension",
+  "description": {
+    "de": "SSH-Server (OpenSSH) aktivieren oder deaktivieren.",
+    "en": "Enable or disable the SSH server (OpenSSH)."
+  },
+  "permissions": ["system.service"],
+  "i18n": {
+    "en": {
+      "SSH-Server (sshd)": "SSH server (sshd)"
+    }
+  },
+  "contributes": {
+    "serviceToggle": {
+      "label": "SSH-Server (sshd)",
+      "service": "ssh",
+      "enableCmd": "systemctl enable --now ssh",
+      "disableCmd": "systemctl disable --now ssh"
+    }
+  }
+}

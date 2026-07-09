@@ -14,7 +14,7 @@ import { APP_VERSION } from './routes/settings';
 import { authRoutes } from './routes/auth';
 import { settingsRoutes } from './routes/settings';
 import { prefsRoutes } from './routes/prefs';
-import { pluginRoutes } from './routes/plugins';
+import { pluginRoutes, loadPluginBackends } from './routes/plugins';
 import { storeRoutes } from './routes/store';
 
 // JWT_SECRET kommt im Produktivbetrieb aus der Env-Datei (install.sh erzeugt
@@ -56,6 +56,9 @@ async function main() {
   await fastify.register(prefsRoutes);
   await fastify.register(pluginRoutes);
   await fastify.register(storeRoutes);
+
+  // Backends installierter Plugins laden (registrieren ihre Routen unter /app/<id>/…)
+  await loadPluginBackends(fastify);
 
   const frontendDist = path.join(__dirname, '../../frontend/dist');
   if (fs.existsSync(frontendDist)) {

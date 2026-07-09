@@ -1,4 +1,31 @@
 {
   "$comment": "Vault-Hub Store-Registry. Jede App/Erweiterung braucht eine 'version' fuer den Update-Vergleich. Der Store-Ort ist ueber STORE_URL/STORE_REPO konfigurierbar; standardmaessig kommt diese Datei mit dem Repo mit.",
-  "apps": []
+  "apps": [
+    {
+      "id": "ssh",
+      "name": "SSH-Zugang",
+      "version": "1.0.0",
+      "type": "extension",
+      "icon": "terminal",
+      "source": "github:derBerliner1983/vault-hub/plugins/ssh",
+      "description": {
+        "de": "SSH-Server (OpenSSH) aktivieren oder deaktivieren.",
+        "en": "Enable or disable the SSH server (OpenSSH)."
+      },
+      "permissions": ["system.service"]
+    },
+    {
+      "id": "terminal",
+      "name": "Terminal",
+      "version": "1.0.0",
+      "type": "app",
+      "icon": "terminal",
+      "source": "github:derBerliner1983/vault-hub/plugins/terminal",
+      "description": {
+        "de": "Interaktive Root-Shell auf dem Server (wie in Core-Hub).",
+        "en": "Interactive root shell on the server (like in Core-Hub)."
+      },
+      "permissions": ["system.exec"]
+    }
+  ]
 }
