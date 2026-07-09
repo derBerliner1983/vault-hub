@@ -16,6 +16,11 @@ const requireCJS = createRequire(__filename);
 const DATA_DIR = process.env.DATA_DIR || '/var/lib/vault-hub';
 const PLUGINS_DIR = path.join(DATA_DIR, 'plugins');
 
+// Beim Start tatsächlich geladene Plugin-Backends. Ist ein installiertes Plugin
+// mit backend.entry NICHT hier enthalten, wurde es nach dem Start installiert und
+// braucht einen Neustart, damit sein Backend aktiv wird.
+const loadedBackends = new Set<string>();
+
 export interface ServiceToggleSpec {
   label?: string;
   service: string;
@@ -105,6 +110,15 @@ export async function pluginRoutes(fastify: FastifyInstance) {
   // Installierte Plugins auflisten
   fastify.get('/api/plugins', { preHandler: requireAuth }, async (_req, reply) => {
     reply.send({ plugins: await readManifests() });
+  });
+
+  // Neustart nötig? (Backend-Plugin nach dem Start installiert, noch nicht geladen)
+  fastify.get('/api/plugins/restart-status', { preHandler: requireAuth }, async (_req, reply) => {
+    const manifests = await readManifestsSafe();
+    const pending = manifests
+      .filter((m) => m.backend?.entry && !loadedBackends.has(safeId(m.id)))
+      .map((m) => ({ id: m.id, name: m.name }));
+    reply.send({ restartNeeded: pending.length > 0, pending });
   });
 
   // Plugin installieren (git clone → PLUGINS_DIR/<id>, optional install.sh)
@@ -250,6 +264,7 @@ export async function loadPluginBackends(fastify: FastifyInstance): Promise<void
         audit: (userId, action, target) => { try { auditQueries.log.run(userId, action, target ?? null); } catch { /* */ } },
       };
       await register(fastify, ctx);
+      loadedBackends.add(id);
       fastify.log.info(`Plugin-Backend geladen: ${id}`);
     } catch (err) {
       fastify.log.warn(`Plugin-Backend ${id} konnte nicht geladen werden: ${err instanceof Error ? err.message : err}`);

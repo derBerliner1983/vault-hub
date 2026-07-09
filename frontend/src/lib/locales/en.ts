@@ -91,4 +91,17 @@ export const en: Record<string, string> = {
 
   // Plugin host
   'Plugin nicht gefunden oder nicht installiert.': 'Plugin not found or not installed.',
+
+  // Settings – extensions & restart
+  'Erweiterungen': 'Extensions',
+  'Keine System-Erweiterungen installiert': 'No system extensions installed',
+  'Installiere z. B. „SSH-Zugang" aus dem Store, dann erscheint hier der Schalter.':
+    'Install e.g. "SSH access" from the store, then the switch appears here.',
+  'Deaktivieren': 'Disable',
+  'Inaktiv': 'Inactive',
+  'Neustart erforderlich': 'Restart required',
+  'Ein neu installiertes Plugin-Backend wird erst nach einem Neustart aktiv':
+    'A newly installed plugin backend only becomes active after a restart',
+  'Backend neu starten': 'Restart backend',
+  'Starte neu…': 'Restarting…',
 };

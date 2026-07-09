@@ -25,6 +25,7 @@ export function Settings() {
     <>
       <Topbar title={tt('Einstellungen')} />
       <div className="page">
+        <RestartBanner />
         <div className="tabs" style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--color-border)' }}>
           <TabBtn active={tab === 'account'} onClick={() => setTab('account')} icon={<KeyRound size={15} />} label={tt('Account')} />
           <TabBtn active={tab === 'extensions'} onClick={() => setTab('extensions')} icon={<Puzzle size={15} />} label={tt('Erweiterungen')} />
@@ -37,6 +38,51 @@ export function Settings() {
         {tab === 'apps' && <AppUpdatesPanel />}
       </div>
     </>
+  );
+}
+
+// Zeigt einen Hinweis, wenn ein nach dem Start installiertes Backend-Plugin
+// einen Neustart braucht, und bietet den Neustart direkt an.
+function RestartBanner() {
+  const [pending, setPending] = useState<{ id: string; name: string }[]>([]);
+  const [restarting, setRestarting] = useState(false);
+
+  const check = useCallback(async () => {
+    try {
+      const r = await fetch('/api/plugins/restart-status', { credentials: 'include' });
+      const d = await r.json();
+      setPending(d.restartNeeded ? d.pending : []);
+    } catch { /* */ }
+  }, []);
+  useEffect(() => { void check(); }, [check]);
+
+  const restart = async () => {
+    setRestarting(true);
+    try { await fetch('/api/settings/restart', { method: 'POST', credentials: 'include' }); } catch { /* Verbindung bricht erwartungsgemäß ab */ }
+    // Warten, bis das Backend wieder erreichbar ist, dann neu laden.
+    const waitUp = async (tries = 0): Promise<void> => {
+      if (tries > 60) { window.location.reload(); return; }
+      try {
+        const r = await fetch('/health', { cache: 'no-store' });
+        if (r.ok) { window.location.reload(); return; }
+      } catch { /* noch nicht oben */ }
+      setTimeout(() => void waitUp(tries + 1), 1000);
+    };
+    setTimeout(() => void waitUp(), 1500);
+  };
+
+  if (pending.length === 0) return null;
+  const names = pending.map((p) => p.name).join(', ');
+  return (
+    <div className="card" style={{ marginBottom: 16, borderLeft: '3px solid var(--color-warning)', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <RefreshCw size={18} style={{ color: 'var(--color-warning)' }} />
+      <div style={{ flex: 1, fontSize: 13 }}>
+        <b>{tt('Neustart erforderlich')}</b> — {tt('Ein neu installiertes Plugin-Backend wird erst nach einem Neustart aktiv')}: {names}
+      </div>
+      <button className="btn btn--primary btn--sm" onClick={restart} disabled={restarting}>
+        <RefreshCw size={14} style={restarting ? { animation: 'spin 1s linear infinite' } : undefined} /> {restarting ? tt('Starte neu…') : tt('Backend neu starten')}
+      </button>
+    </div>
   );
 }
 

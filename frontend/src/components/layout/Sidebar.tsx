@@ -23,6 +23,16 @@ const ICONS: Record<string, LucideIcon> = {
   harddrive: HardDrive, store: Store, puzzle: Puzzle,
 };
 
+// Plugin-Icon rendern: das Plugin darf sein Icon selbst mitbringen — als
+// Inline-SVG (nutzt currentColor → theme-treu) ODER als lucide-Name. Fallback: Puzzle.
+function PluginIcon({ icon }: { icon?: string }) {
+  if (icon && icon.trim().startsWith('<svg')) {
+    return <span className="sidebar__item-icon" style={{ display: 'inline-flex' }} dangerouslySetInnerHTML={{ __html: icon }} />;
+  }
+  const Lucide = (icon && ICONS[icon.toLowerCase()]) || Puzzle;
+  return <Lucide className="sidebar__item-icon" />;
+}
+
 export function Sidebar({ collapsed, onToggle, theme, onThemeToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -86,10 +96,9 @@ export function Sidebar({ collapsed, onToggle, theme, onThemeToggle, mobileOpen,
             <div className="sidebar__section-label">{section}</div>
             {items.map((p) => {
               const nav = p.contributes!.nav!;
-              const Icon = (nav.icon && ICONS[nav.icon.toLowerCase()]) || Puzzle;
               return (
                 <NavLink key={p.id} to={nav.route} className={itemClass} title={collapsed ? tt(nav.label) : undefined} onClick={handleNavClick}>
-                  <Icon className="sidebar__item-icon" />
+                  <PluginIcon icon={nav.icon} />
                   <span className="sidebar__item-label">{tt(nav.label)}</span>
                 </NavLink>
               );

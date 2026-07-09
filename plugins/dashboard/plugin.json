@@ -1,0 +1,20 @@
+{
+  "id": "dashboard",
+  "name": "Dashboard",
+  "version": "1.0.0",
+  "type": "app",
+  "description": {
+    "de": "System-Dashboard mit CPU, RAM, GPU, Datenträger und Netzwerk (wie in Core-Hub).",
+    "en": "System dashboard with CPU, RAM, GPU, disks and network (like in Core-Hub)."
+  },
+  "permissions": ["system.read"],
+  "backend": { "type": "node", "entry": "backend/index.js" },
+  "contributes": {
+    "nav": {
+      "section": "ÜBERSICHT",
+      "label": "Dashboard",
+      "route": "/app/dashboard",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\"/></svg>"
+    }
+  }
+}

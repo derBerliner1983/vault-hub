@@ -2,6 +2,30 @@
   "$comment": "Vault-Hub Store-Registry. Jede App/Erweiterung braucht eine 'version' fuer den Update-Vergleich. Der Store-Ort ist ueber STORE_URL/STORE_REPO konfigurierbar; standardmaessig kommt diese Datei mit dem Repo mit.",
   "apps": [
     {
+      "id": "dashboard",
+      "name": "Dashboard",
+      "version": "1.0.0",
+      "type": "app",
+      "source": "github:derBerliner1983/vault-hub/plugins/dashboard",
+      "description": {
+        "de": "System-Dashboard mit CPU, RAM, GPU, Datenträger und Netzwerk.",
+        "en": "System dashboard with CPU, RAM, GPU, disks and network."
+      },
+      "permissions": ["system.read"]
+    },
+    {
+      "id": "taskmanager",
+      "name": "Taskmanager",
+      "version": "1.0.0",
+      "type": "app",
+      "source": "github:derBerliner1983/vault-hub/plugins/taskmanager",
+      "description": {
+        "de": "Prozesse und systemd-Dienste anzeigen, beenden und steuern.",
+        "en": "View, kill and control processes and systemd services."
+      },
+      "permissions": ["system.read", "system.exec"]
+    },
+    {
       "id": "ssh",
       "name": "SSH-Zugang",
       "version": "1.0.0",
