@@ -38,6 +38,18 @@
       "permissions": ["system.read", "system.exec", "system.packages", "system.service"]
     },
     {
+      "id": "users",
+      "name": "Benutzer",
+      "version": "1.0.0",
+      "type": "app",
+      "source": "github:derBerliner1983/vault-hub/plugins/users",
+      "description": {
+        "de": "Web-Logins (mit Rolle & 2FA) und Linux-Systembenutzer verwalten.",
+        "en": "Manage web logins (with role & 2FA) and Linux system users."
+      },
+      "permissions": ["system.read", "system.exec", "users.manage"]
+    },
+    {
       "id": "ssh",
       "name": "SSH-Zugang",
       "version": "1.0.0",
