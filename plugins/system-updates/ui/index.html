@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>System-Updates</title>
+<style>
+  :root{--bg:#1C1C1F;--surface:#26262B;--sunken:#18181B;--fg:#F4F4F5;--muted:#A1A1AA;--faint:#52525B;--border:rgba(255,255,255,.08);--accent:#34D399;--err:#F87171}
+  :root[data-theme="light"]{--bg:#F7F7F8;--surface:#FFF;--sunken:#F1F1F3;--fg:#0B0B0F;--muted:#52525B;--faint:#A1A1AA;--border:rgba(0,0,0,.08);--accent:#10B981;--err:#DC2626}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,sans-serif;padding:16px;font-size:13px}
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px}
+  .toolbar .sub{color:var(--faint);font-size:12px}
+  .spacer{flex:1}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+  .card h3{margin:0;padding:14px 16px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:11px 16px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+  tr:last-child td{border-bottom:0}
+  .new{color:var(--accent);font-weight:600}
+  .src{color:var(--faint)}
+  .btn{font:inherit;font-size:13px;padding:7px 14px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#052E20;font-weight:600}
+  .btn.sm{padding:5px 11px;font-size:12px}
+  .btn:disabled{opacity:.5;cursor:default}
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  .reboot{margin:12px 0;padding:10px 14px;border-radius:10px;background:rgba(251,191,36,.12);color:#FBBF24;font-size:13px;display:none}
+  /* Modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:min(760px,100%);max-height:85vh;display:flex;flex-direction:column}
+  .modal .mh{display:flex;align-items:center;padding:16px;border-bottom:1px solid var(--border)}
+  .modal .mh b{font-size:15px}
+  .modal .mh .x{margin-left:auto;cursor:pointer;color:var(--muted);background:none;border:0;font-size:18px}
+  pre{margin:16px;background:var(--sunken);border-radius:10px;padding:14px;font-size:12px;overflow:auto;white-space:pre-wrap;flex:1}
+  .done{padding:0 16px 14px;text-align:right;color:var(--accent);font-size:13px}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <div><b style="font-size:15px">System-Updates</b><div class="sub" id="pm">Paketmanager: …</div></div>
+  <div class="spacer"></div>
+  <button class="btn" id="check">↻ Nach Updates suchen</button>
+  <button class="btn primary" id="all" style="display:none">⬇ Alle installieren</button>
+</div>
+<div class="reboot" id="reboot">Ein Neustart des Servers ist erforderlich, um alle Updates abzuschließen.</div>
+<div id="content"><div class="empty">Lade…</div></div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="mh"><b>Update-Ausgabe</b><button class="x" id="mx">✕</button></div>
+    <pre id="out"></pre>
+    <div class="done" id="done" style="display:none">✓ Fertig – Fenster schließt automatisch…</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var params=new URLSearchParams(location.search);
+  document.documentElement.setAttribute('data-theme',(params.get('theme')||'dark')==='light'?'light':'dark');
+  var content=document.getElementById('content'),pmEl=document.getElementById('pm'),allBtn=document.getElementById('all'),
+      rebootEl=document.getElementById('reboot'),overlay=document.getElementById('overlay'),outEl=document.getElementById('out'),doneEl=document.getElementById('done');
+  var updates=[],busy=false;
+  function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+  function api(p,opts){ return fetch('/app/system-updates/api/'+p,Object.assign({credentials:'include'},opts||{})).then(function(r){return r.json().then(function(d){ if(!r.ok) throw new Error(d.error||('HTTP '+r.status)); return d; });}); }
+  function POST(p,body){ return api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}); }
+
+  function render(){
+    if(!updates.length){ content.innerHTML='<div class="card"><div class="empty">✓ System ist aktuell – keine Updates verfügbar.</div></div>'; allBtn.style.display='none'; return; }
+    allBtn.style.display=''; allBtn.textContent='⬇ Alle installieren ('+updates.length+')';
+    var h='<div class="card"><h3>Verfügbare Updates · '+updates.length+' Paket(e)</h3><table><thead><tr><th>Paket</th><th>Aktuell</th><th>Neu</th><th>Quelle</th><th></th></tr></thead><tbody>';
+    updates.forEach(function(u){
+      h+='<tr><td><b>'+esc(u.name)+'</b></td><td>'+esc(u.currentVersion||'–')+'</td><td class="new">'+esc(u.newVersion)+'</td><td class="src">'+esc(u.repo||'')+'</td>'
+        +'<td style="text-align:right"><button class="btn sm" data-pkg="'+esc(u.name)+'">⬇ Update</button></td></tr>';
+    });
+    h+='</tbody></table></div>'; content.innerHTML=h;
+    content.querySelectorAll('[data-pkg]').forEach(function(b){ b.onclick=function(){ apply([b.getAttribute('data-pkg')]); }; });
+  }
+  function load(){
+    api('list').then(function(d){
+      pmEl.textContent='Paketmanager: '+(d.manager||'—');
+      updates=d.updates||[]; rebootEl.style.display=d.rebootRequired?'block':'none'; render();
+    }).catch(function(e){ content.innerHTML='<div class="card"><div class="empty" style="color:var(--err)">'+esc(e.message)+'</div></div>'; });
+  }
+  function showModal(){ overlay.style.display='flex'; outEl.textContent=''; doneEl.style.display='none'; }
+  function closeModal(){ overlay.style.display='none'; }
+  document.getElementById('mx').onclick=closeModal;
+
+  function apply(pkgs){
+    if(busy)return; busy=true; showModal(); outEl.textContent='› Update wird ausgeführt …\n';
+    POST('apply',{packages:pkgs}).then(function(d){
+      outEl.textContent=(d.output||'(keine Ausgabe)').trim();
+      doneEl.style.display='block';
+      setTimeout(function(){ closeModal(); load(); },3500);
+    }).catch(function(e){ outEl.textContent+='\n[Fehler] '+e.message; }).finally(function(){ busy=false; });
+  }
+  document.getElementById('all').onclick=function(){ apply([]); };
+  document.getElementById('check').onclick=function(){
+    if(busy)return; busy=true; var b=this; b.disabled=true; b.textContent='↻ Suche …';
+    POST('check').then(function(){ load(); }).catch(function(e){ alert(e.message); }).finally(function(){ busy=false; b.disabled=false; b.textContent='↻ Nach Updates suchen'; });
+  };
+  load();
+})();
+</script>
+</body>
+</html>
