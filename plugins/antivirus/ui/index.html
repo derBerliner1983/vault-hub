@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Virenschutz</title>
+<style>
+  :root{--bg:#1C1C1F;--surface:#26262B;--sunken:#18181B;--fg:#F4F4F5;--muted:#A1A1AA;--faint:#52525B;--border:rgba(255,255,255,.08);--accent:#34D399;--warn:#FBBF24;--err:#F87171}
+  :root[data-theme="light"]{--bg:#F7F7F8;--surface:#FFF;--sunken:#F1F1F3;--fg:#0B0B0F;--muted:#52525B;--faint:#A1A1AA;--border:rgba(0,0,0,.08);--accent:#10B981;--warn:#D97706;--err:#DC2626}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,sans-serif;padding:16px;font-size:13px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
+  h3{margin:0 0 12px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  .row{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:6px 0}
+  .row .k{color:var(--muted)}
+  .btn{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#052E20;font-weight:600}
+  .btn:disabled{opacity:.5;cursor:default}
+  .pill{padding:2px 10px;border-radius:999px;font-size:12px}
+  .on-p{background:rgba(52,211,153,.15);color:var(--accent)}
+  .off-p{background:rgba(255,255,255,.08);color:var(--muted)}
+  input,select{font:inherit;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--sunken);color:var(--fg)}
+  .grid2{display:flex;gap:8px;flex-wrap:wrap}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  td,th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border)}
+  #msg{margin-bottom:12px;display:none;padding:8px 12px;border-radius:8px}
+  .muted{color:var(--faint);font-size:12px}
+</style>
+</head>
+<body>
+<div id="msg"></div>
+<div id="app"><div class="muted">Lade…</div></div>
+<script>
+(function(){
+  var params=new URLSearchParams(location.search);
+  document.documentElement.setAttribute('data-theme',(params.get('theme')||'dark')==='light'?'light':'dark');
+  var app=document.getElementById('app'),msgEl=document.getElementById('msg'),busy=false,pollTimer=null;
+
+  function msg(text,kind){ msgEl.style.display=text?'block':'none'; msgEl.textContent=text||''; msgEl.style.background=kind==='err'?'rgba(248,113,113,.15)':'rgba(52,211,153,.15)'; msgEl.style.color=kind==='err'?'var(--err)':'var(--accent)'; }
+  function api(path,opts){ return fetch('/app/antivirus/api/'+path,Object.assign({credentials:'include'},opts||{})); }
+  function post(path,body){ return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(d){ if(!r.ok) throw new Error(d.error||('HTTP '+r.status)); return d; });}); }
+
+  function esc(s){return String(s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+
+  function render(s){
+    var h='';
+    if(!s.installed){
+      h+='<div class="card"><h3>ClamAV</h3><div class="row"><div>ClamAV ist nicht installiert.</div>'
+        +'<button class="btn primary" id="install">Installieren</button></div>'
+        +'<div class="muted">Installiert die Pakete clamav + clamav-daemon.</div></div>';
+    }else{
+      var age=s.defsAgeDays;
+      h+='<div class="card"><h3>Status</h3>'
+        +'<div class="row"><span class="k">Version</span><b>'+esc((s.version||'').split(' ')[0]||'installiert')+'</b></div>'
+        +'<div class="row"><span class="k">Signaturen</span><b>'+(age==null?'unbekannt':(age+' Tage alt'))+' <button class="btn" id="update" style="margin-left:8px">Aktualisieren</button></b></div>'
+        +'<div class="row"><span class="k">Scan-Daemon (clamav-daemon)</span><span><span class="pill '+(s.daemonActive?'on-p':'off-p')+'">'+(s.daemonActive?'aktiv':'inaktiv')+'</span> <button class="btn" data-svc="daemon" data-en="'+(!s.daemonActive)+'">'+(s.daemonActive?'Deaktivieren':'Aktivieren')+'</button></span></div>'
+        +'<div class="row"><span class="k">Auto-Updates (clamav-freshclam)</span><span><span class="pill '+(s.freshclamActive?'on-p':'off-p')+'">'+(s.freshclamActive?'aktiv':'inaktiv')+'</span> <button class="btn" data-svc="freshclam" data-en="'+(!s.freshclamActive)+'">'+(s.freshclamActive?'Deaktivieren':'Aktivieren')+'</button></span></div>'
+        +'</div>';
+      // Scan
+      var sc=s.scan||{};
+      h+='<div class="card"><h3>Scan</h3>';
+      if(sc.running){
+        h+='<div class="row"><div>Scan läuft: <b>'+esc(sc.path)+'</b></div><span class="pill on-p">läuft…</span></div>'
+          +'<div class="muted">Geprüfte Dateien: '+(sc.scanned||0)+' · Funde: '+(sc.infectedCount||0)+'</div>';
+      }else{
+        h+='<div class="grid2"><input id="scanpath" placeholder="/home" value="/home" style="flex:1;min-width:160px"/>'
+          +'<input id="scanexcl" placeholder="Ausschluss, z. B. /home/x/cache" style="flex:1;min-width:160px"/>'
+          +'<button class="btn primary" id="scan">Scan starten</button></div>';
+        if(sc.finishedAt){
+          h+='<div class="row" style="margin-top:10px"><span class="k">Letzter Scan</span><b>'+esc(sc.path||'')+' · '+(sc.scanned||0)+' Dateien</b></div>';
+          if(sc.error) h+='<div style="color:var(--err)">'+esc(sc.error)+'</div>';
+          if((sc.infected||[]).length){
+            h+='<table><thead><tr><th>Datei</th><th>Bedrohung</th></tr></thead><tbody>';
+            sc.infected.forEach(function(i){ h+='<tr><td>'+esc(i.file)+'</td><td style="color:var(--err)">'+esc(i.virus)+'</td></tr>'; });
+            h+='</tbody></table>';
+          }else h+='<div class="row"><span style="color:var(--accent)">Keine Bedrohungen gefunden ✓</span></div>';
+        }
+      }
+      h+='</div>';
+    }
+    app.innerHTML=h;
+    wire(s);
+  }
+
+  function wire(s){
+    var el;
+    if(el=document.getElementById('install')) el.onclick=function(){ act(el,post('install'),'ClamAV installiert.'); };
+    if(el=document.getElementById('update')) el.onclick=function(){ act(el,post('update'),'Signaturen aktualisiert.'); };
+    if(el=document.getElementById('scan')) el.onclick=function(){
+      var path=document.getElementById('scanpath').value.trim(), excl=document.getElementById('scanexcl').value.trim();
+      act(el,post('scan',{path:path,exclude:excl}),'Scan gestartet.');
+    };
+    document.querySelectorAll('[data-svc]').forEach(function(b){
+      b.onclick=function(){ act(b,post('daemon',{service:b.getAttribute('data-svc'),enable:b.getAttribute('data-en')==='true'}),'Dienst aktualisiert.'); };
+    });
+  }
+  function act(btn,p,okMsg){
+    if(busy)return; busy=true; btn.disabled=true; msg('');
+    p.then(function(){ msg(okMsg); }).catch(function(e){ msg(e.message,'err'); }).finally(function(){ busy=false; load(); });
+  }
+  function load(){
+    api('status').then(function(r){return r.json();}).then(function(s){ render(s);
+      if(pollTimer)clearInterval(pollTimer);
+      if(s.scan&&s.scan.running) pollTimer=setInterval(load,2000);
+    }).catch(function(e){ msg('Fehler: '+e.message,'err'); });
+  }
+  load();
+})();
+</script>
+</body>
+</html>

@@ -26,6 +26,18 @@
       "permissions": ["system.read", "system.exec"]
     },
     {
+      "id": "antivirus",
+      "name": "Virenschutz",
+      "version": "1.0.0",
+      "type": "app",
+      "source": "github:derBerliner1983/vault-hub/plugins/antivirus",
+      "description": {
+        "de": "Virenschutz mit ClamAV: installieren, Signaturen aktualisieren, Scans und Auto-Updates.",
+        "en": "Antivirus with ClamAV: install, update signatures, scans and auto-updates."
+      },
+      "permissions": ["system.read", "system.exec", "system.packages", "system.service"]
+    },
+    {
       "id": "ssh",
       "name": "SSH-Zugang",
       "version": "1.0.0",
