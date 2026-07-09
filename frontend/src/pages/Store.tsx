@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Store as StoreIcon, Download, Trash2, RefreshCw, Plus, AlertCircle } from 'lucide-react';
 import { Topbar } from '../components/layout/Topbar';
-import { tt } from '../lib/i18n';
+import { tt, localized } from '../lib/i18n';
 import {
   fetchStore, fetchInstalledPlugins, installPlugin, uninstallPlugin,
   type StoreItem, type PluginManifest,
@@ -107,7 +107,7 @@ export function Store() {
                       <div style={{ fontSize: 11, color: 'var(--color-faint)' }}>v{item.version}{item.type ? ` · ${item.type === 'extension' ? tt('System-Erweiterung') : tt('App')}` : ''}</div>
                     </div>
                   </div>
-                  {item.description && <div style={{ fontSize: 13, color: 'var(--color-subtle)' }}>{item.description}</div>}
+                  {item.description && <div style={{ fontSize: 13, color: 'var(--color-subtle)' }}>{localized(item.description)}</div>}
                   <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
                     {isInstalled ? (
                       <>

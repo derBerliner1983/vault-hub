@@ -471,6 +471,35 @@ if [ -d "$INSTALL_DIR" ] || systemctl list-unit-files 2>/dev/null | grep -q "^${
   OLD_VERSION="$(cat "$INSTALL_DIR/VERSION" 2>/dev/null || echo 'unbekannt')"
 fi
 
+# ── Port-Prüfung (nur Neuinstallation): Standard-Port nehmen, bei Belegung fragen ──
+_port_in_use() {
+  local p="$1"
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltn 2>/dev/null | grep -qE "[:.]${p}[[:space:]]" && return 0
+  elif command -v netstat >/dev/null 2>&1; then
+    netstat -ltn 2>/dev/null | grep -qE "[:.]${p}[[:space:]]" && return 0
+  fi
+  return 1
+}
+_find_free_port() { local p="$1"; while _port_in_use "$p"; do p=$((p+1)); done; echo "$p"; }
+
+if [ "$MODE" = "install" ] && _port_in_use "$PORT"; then
+  if [ -n "$PORT_EXPLICIT" ]; then
+    warn "Port $PORT ist belegt, wird aber per --port erzwungen."
+  else
+    _suggested="$(_find_free_port $((PORT+1)))"
+    warn "Port $PORT ist bereits belegt (evtl. läuft dort Core-Hub oder ein anderer Dienst)."
+    if [ -t 0 ]; then
+      read -rp "Anderen Port verwenden? [Enter = $_suggested, oder Portnummer eingeben]: " _ans
+      PORT="${_ans:-$_suggested}"
+    else
+      PORT="$_suggested"
+      info "Nicht-interaktiv: verwende freien Port $PORT."
+    fi
+  fi
+fi
+info "Vault-Hub verwendet Port: $PORT"
+
 if [ "$MODE" = "update" ]; then
   info "=== $APP_NAME Update ==="
   info "    Installierte Version: $OLD_VERSION  →  Neue Version: $NEW_VERSION"

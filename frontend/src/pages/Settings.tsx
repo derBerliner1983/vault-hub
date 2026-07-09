@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import qrcode from 'qrcode-generator';
 import {
-  KeyRound, ShieldCheck, ArrowUpCircle, RefreshCw, CheckCircle2, Server, Package,
+  KeyRound, ShieldCheck, ArrowUpCircle, RefreshCw, CheckCircle2, Server, Package, Globe,
 } from 'lucide-react';
 import { Topbar } from '../components/layout/Topbar';
-import { tt } from '../lib/i18n';
+import { tt, useI18n, LANGUAGES } from '../lib/i18n';
 import { api } from '../lib/api';
 import { fetchStore, fetchInstalledPlugins, installPlugin, type StoreItem } from '../lib/plugins';
 
@@ -51,6 +51,31 @@ function AccountPanel() {
     <div className="stats-grid">
       <PasswordCard />
       <TwoFactorCard />
+      <LanguageCard />
+    </div>
+  );
+}
+
+function LanguageCard() {
+  const { lang, setLang } = useI18n();
+  const change = (code: string) => {
+    setLang(code);
+    // tt-basierte Komponenten sind nicht reaktiv → einmal neu laden für sofortige Wirkung.
+    setTimeout(() => window.location.reload(), 50);
+  };
+  return (
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}><Globe size={16} /> {tt('Sprache')}</div>
+      <div style={{ fontSize: 13, color: 'var(--color-subtle)' }}>
+        {tt('Basis: Deutsch & Englisch. Weitere Sprachen kommen modular über den Store.')}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {LANGUAGES.map((l) => (
+          <button key={l.code} className={`btn btn--sm ${l.code === lang ? 'btn--primary' : 'btn--outline'}`} onClick={() => change(l.code)}>
+            {l.flag ? `${l.flag} ` : ''}{l.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

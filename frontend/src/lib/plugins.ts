@@ -1,4 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
+import { registerMessages } from './i18n';
+
+/** Lokalisierbarer Text: fester String ODER {lang: text}-Map (modulare Sprache). */
+export type Localizable = string | Record<string, string>;
 
 // ─── Plugin-/Store-Typen ──────────────────────────────────────────────────────
 // Ein Plugin deklariert über `contributes` selbst, wo es sich in die Shell
@@ -33,10 +37,12 @@ export interface PluginManifest {
   name: string;
   version: string;
   icon?: string;
-  description?: string;
+  description?: Localizable;
   type?: 'app' | 'extension';
   source?: string;
   permissions?: string[];
+  // Modulare Sprach-Variablen der App: { de: {...}, en: {...}, … }
+  i18n?: Record<string, Record<string, string>>;
   contributes?: {
     nav?: NavContribution;
     settingsPanel?: SettingsPanelContribution;
@@ -107,7 +113,12 @@ export function useInstalledPlugins() {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    setPlugins(await fetchInstalledPlugins());
+    const list = await fetchInstalledPlugins();
+    // Modulare Sprach-Variablen jeder App in i18n einmischen.
+    for (const p of list) {
+      if (p.i18n) for (const [lang, dict] of Object.entries(p.i18n)) registerMessages(lang, dict);
+    }
+    setPlugins(list);
     setLoading(false);
   }, []);
 

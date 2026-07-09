@@ -88,9 +88,9 @@ export function Sidebar({ collapsed, onToggle, theme, onThemeToggle, mobileOpen,
               const nav = p.contributes!.nav!;
               const Icon = (nav.icon && ICONS[nav.icon.toLowerCase()]) || Puzzle;
               return (
-                <NavLink key={p.id} to={nav.route} className={itemClass} title={collapsed ? nav.label : undefined} onClick={handleNavClick}>
+                <NavLink key={p.id} to={nav.route} className={itemClass} title={collapsed ? tt(nav.label) : undefined} onClick={handleNavClick}>
                   <Icon className="sidebar__item-icon" />
-                  <span className="sidebar__item-label">{nav.label}</span>
+                  <span className="sidebar__item-label">{tt(nav.label)}</span>
                 </NavLink>
               );
             })}

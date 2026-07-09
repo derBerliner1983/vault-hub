@@ -18,9 +18,10 @@ interface RegistryItem {
   version: string;          // Pflicht: erlaubt den Update-Vergleich
   type?: 'app' | 'extension';
   source: string;           // github:owner/repo[/subpath] oder git-URL
-  description?: string;
+  description?: string | Record<string, string>;   // lokalisierbar (modulare Sprache)
   icon?: string;
   permissions?: string[];
+  i18n?: Record<string, Record<string, string>>;   // modulare Sprach-Variablen der App
 }
 
 function bundledRegistryPath(): string {
