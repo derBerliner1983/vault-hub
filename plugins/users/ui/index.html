@@ -4,63 +4,45 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Benutzer</title>
+<link rel="stylesheet" href="/plugin-kit.css" />
 <style>
-  :root{--bg:#1C1C1F;--surface:#26262B;--sunken:#18181B;--fg:#F4F4F5;--muted:#A1A1AA;--faint:#52525B;--border:rgba(255,255,255,.08);--accent:#34D399;--err:#F87171;--warn:#FBBF24;--hover:rgba(255,255,255,.04)}
-  :root[data-theme="light"]{--bg:#F7F7F8;--surface:#FFF;--sunken:#F1F1F3;--fg:#0B0B0F;--muted:#52525B;--faint:#A1A1AA;--border:rgba(0,0,0,.08);--accent:#10B981;--err:#DC2626;--warn:#D97706;--hover:rgba(0,0,0,.03)}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,sans-serif;padding:16px;font-size:13px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
-  .head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-  .head h3{margin:0;font-size:13px;letter-spacing:.03em;text-transform:uppercase}
-  .head .sub{color:var(--faint);font-size:12px}
-  .head .btn{margin-left:auto}
-  table{width:100%;border-collapse:collapse}
-  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
-  th{color:var(--muted);font-weight:500;font-size:12px}
-  tr:hover td{background:var(--hover)}
-  .btn{font:inherit;font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:#052E20;font-weight:600}
-  .btn.icon{padding:5px 7px}
-  .btn.danger{color:var(--err);border-color:transparent}
-  .pill{padding:1px 9px;border-radius:999px;font-size:11px}
-  .role{background:rgba(52,211,153,.15);color:var(--accent)}
-  .ok{color:var(--accent)} .off{color:var(--faint)}
-  input,select{font:inherit;padding:6px 9px;border-radius:8px;border:1px solid var(--border);background:var(--sunken);color:var(--fg)}
-  .form{display:none;gap:8px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border)}
-  .form.on{display:flex}
-  #msg{display:none;margin-bottom:12px;padding:8px 12px;border-radius:8px}
-  .groups{max-width:280px;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+  .key{color:var(--color-warning)}
+  .actions{text-align:right;white-space:nowrap}
 </style>
 </head>
 <body>
-<div id="msg"></div>
+<div class="msg" id="msg"></div>
 
 <div class="card">
-  <div class="head">
-    <h3>Web-Logins</h3><span class="sub">Zugänge zur Weboberfläche</span>
-    <button class="btn primary" id="add-web">+ Login</button>
+  <div class="card-header">
+    <span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+    Web-Logins <span class="subtle" style="text-transform:none;font-weight:400;letter-spacing:0">· Zugänge zur Weboberfläche</span>
+    <span class="spacer"></span>
+    <button class="btn primary sm" id="add-web">+ Login</button>
   </div>
-  <div class="form" id="form-web">
-    <input id="w-user" placeholder="Benutzername"/>
-    <input id="w-pass" type="password" placeholder="Passwort"/>
+  <div class="form" id="form-web" style="display:none;margin-bottom:12px">
+    <input id="w-user" placeholder="Benutzername" style="width:140px"/>
+    <input id="w-pass" type="password" placeholder="Passwort" style="width:150px"/>
     <select id="w-role"><option value="admin">admin</option><option value="viewer">viewer</option></select>
-    <button class="btn primary" id="w-save">Anlegen</button>
-    <button class="btn" id="w-cancel">Abbrechen</button>
+    <button class="btn primary sm" id="w-save">Anlegen</button>
+    <button class="btn sm" id="w-cancel">Abbrechen</button>
   </div>
   <div id="web"></div>
 </div>
 
 <div class="card">
-  <div class="head">
-    <h3>Linux-Benutzer</h3><span class="sub">Systembenutzer des Servers</span>
-    <button class="btn primary" id="add-lin">+ Benutzer</button>
+  <div class="card-header">
+    <span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg></span>
+    Linux-Benutzer <span class="subtle" style="text-transform:none;font-weight:400;letter-spacing:0">· Systembenutzer des Servers</span>
+    <span class="spacer"></span>
+    <button class="btn primary sm" id="add-lin">+ Benutzer</button>
   </div>
-  <div class="form" id="form-lin">
-    <input id="l-user" placeholder="Benutzername"/>
-    <input id="l-pass" type="password" placeholder="Passwort (optional)"/>
-    <label style="display:flex;align-items:center;gap:6px;color:var(--muted)"><input type="checkbox" id="l-sudo" style="width:auto"/> sudo</label>
-    <button class="btn primary" id="l-save">Anlegen</button>
-    <button class="btn" id="l-cancel">Abbrechen</button>
+  <div class="form" id="form-lin" style="display:none;margin-bottom:12px">
+    <input id="l-user" placeholder="Benutzername" style="width:140px"/>
+    <input id="l-pass" type="password" placeholder="Passwort (optional)" style="width:160px"/>
+    <label style="display:flex;align-items:center;gap:6px;color:var(--color-muted)"><input type="checkbox" id="l-sudo" style="width:auto"/> sudo</label>
+    <button class="btn primary sm" id="l-save">Anlegen</button>
+    <button class="btn sm" id="l-cancel">Abbrechen</button>
   </div>
   <div id="lin"></div>
 </div>
@@ -70,60 +52,63 @@
   var params=new URLSearchParams(location.search);
   document.documentElement.setAttribute('data-theme',(params.get('theme')||'dark')==='light'?'light':'dark');
   var msgEl=document.getElementById('msg');
-  function msg(t,err){ msgEl.style.display=t?'block':'none'; msgEl.textContent=t||''; msgEl.style.background=err?'rgba(248,113,113,.15)':'rgba(52,211,153,.15)'; msgEl.style.color=err?'var(--err)':'var(--accent)'; }
-  function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+  function msg(t,err){ msgEl.className='msg'+(t?' show '+(err?'err':'ok'):''); msgEl.textContent=t||''; }
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function j(url,opts){ return fetch(url,Object.assign({credentials:'include'},opts||{})).then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok) throw new Error(d.error||('HTTP '+r.status)); return d; }); }); }
   function POST(url,body){ return j(url,{method:'POST',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}); }
   function DEL(url){ return j(url,{method:'DELETE'}); }
-  function toggle(id){ var f=document.getElementById(id); f.classList.toggle('on'); }
+  var TRASH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+  var KEY='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L21 5"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>';
 
-  // ── Web-Logins (Kern-API /api/users) ──
+  // ── Web-Logins ──
   function loadWeb(){
     j('/api/users').then(function(d){
       var h='<table><thead><tr><th>Benutzer</th><th>Rolle</th><th>2FA</th><th>Erstellt</th><th></th></tr></thead><tbody>';
       (d.users||[]).forEach(function(u){
-        h+='<tr><td><b>'+esc(u.username)+'</b></td><td><span class="pill role">'+esc(u.role)+'</span></td>'
-          +'<td>'+(u.totp_enabled?'<span class="ok">✔ aktiv</span>':'<span class="off">–</span>')+'</td>'
-          +'<td>'+esc((u.created_at||'').slice(0,10))+'</td>'
-          +'<td style="text-align:right">'
-          +(u.totp_enabled?'<button class="btn" data-2fa="'+u.id+'">2FA zurücksetzen</button> ':'')
-          +'<button class="btn danger" data-delweb="'+u.id+'" data-name="'+esc(u.username)+'">🗑</button></td></tr>';
+        h+='<tr><td><b>'+esc(u.username)+'</b></td><td><span class="pill on">'+esc(u.role)+'</span></td>'
+          +'<td>'+(u.totp_enabled?'<span class="pill on">aktiv</span>':'<span class="muted">–</span>')+(u.totp_required?' <span class="pill warn">Pflicht</span>':'')+'</td>'
+          +'<td class="mono muted">'+esc((u.created_at||'').slice(0,10))+'</td>'
+          +'<td class="actions">'
+          +'<button class="btn xs" data-req="'+u.id+'" data-on="'+(!u.totp_required)+'">'+(u.totp_required?'2FA-Pflicht aus':'2FA-Pflicht')+'</button> '
+          +(u.totp_enabled?'<button class="btn xs" data-2fa="'+u.id+'">2FA zurücksetzen</button> ':'')
+          +'<button class="btn xs danger icon" data-delweb="'+u.id+'" data-name="'+esc(u.username)+'" title="Löschen">'+TRASH+'</button></td></tr>';
       });
       h+='</tbody></table>'; document.getElementById('web').innerHTML=h;
       document.querySelectorAll('[data-delweb]').forEach(function(b){ b.onclick=function(){ if(!confirm('Login "'+b.getAttribute('data-name')+'" löschen?'))return; DEL('/api/users/'+b.getAttribute('data-delweb')).then(function(){msg('Login gelöscht.');loadWeb();}).catch(function(e){msg(e.message,true);}); }; });
-      document.querySelectorAll('[data-2fa]').forEach(function(b){ b.onclick=function(){ POST('/api/users/'+b.getAttribute('data-2fa')+'/2fa/reset').then(function(){msg('2FA zurückgesetzt.');loadWeb();}).catch(function(e){msg(e.message,true);}); }; });
-    }).catch(function(e){ document.getElementById('web').innerHTML='<div style="color:var(--err)">'+esc(e.message)+'</div>'; });
+      document.querySelectorAll('[data-2fa]').forEach(function(b){ b.onclick=function(){ if(!confirm('2FA für diesen Benutzer zurücksetzen (deaktivieren)?'))return; POST('/api/users/'+b.getAttribute('data-2fa')+'/2fa/reset').then(function(){msg('2FA zurückgesetzt.');loadWeb();}).catch(function(e){msg(e.message,true);}); }; });
+      document.querySelectorAll('[data-req]').forEach(function(b){ b.onclick=function(){ POST('/api/users/'+b.getAttribute('data-req')+'/2fa/require',{required:b.getAttribute('data-on')==='true'}).then(function(){msg('2FA-Pflicht aktualisiert.');loadWeb();}).catch(function(e){msg(e.message,true);}); }; });
+    }).catch(function(e){ document.getElementById('web').innerHTML='<div style="color:var(--color-error)">'+esc(e.message)+'</div>'; });
   }
-  document.getElementById('add-web').onclick=function(){ toggle('form-web'); };
-  document.getElementById('w-cancel').onclick=function(){ toggle('form-web'); };
+  document.getElementById('add-web').onclick=function(){ var f=document.getElementById('form-web'); f.style.display=f.style.display==='none'?'flex':'none'; };
+  document.getElementById('w-cancel').onclick=function(){ document.getElementById('form-web').style.display='none'; };
   document.getElementById('w-save').onclick=function(){
     var u=document.getElementById('w-user').value.trim(), p=document.getElementById('w-pass').value, r=document.getElementById('w-role').value;
     if(!u||!p){msg('Benutzername und Passwort nötig.',true);return;}
-    POST('/api/users',{username:u,password:p,role:r}).then(function(){ msg('Login angelegt.'); toggle('form-web'); document.getElementById('w-user').value='';document.getElementById('w-pass').value=''; loadWeb(); }).catch(function(e){msg(e.message,true);});
+    POST('/api/users',{username:u,password:p,role:r}).then(function(){ msg('Login angelegt.'); document.getElementById('form-web').style.display='none'; document.getElementById('w-user').value='';document.getElementById('w-pass').value=''; loadWeb(); }).catch(function(e){msg(e.message,true);});
   };
 
-  // ── Linux-Benutzer (Plugin-API) ──
+  // ── Linux-Benutzer ──
   function loadLin(){
     j('/app/users/api/linux/users').then(function(d){
       var h='<table><thead><tr><th>Benutzer</th><th>UID</th><th>Gruppen</th><th>Shell</th><th></th></tr></thead><tbody>';
       (d.users||[]).forEach(function(u){
         var sudo=(u.groups||[]).indexOf('sudo')>=0;
-        h+='<tr><td><b>'+esc(u.username)+'</b>'+(sudo?' <span title="sudo" style="color:var(--warn)">⛨</span>':'')+'</td>'
-          +'<td>'+u.uid+'</td><td class="groups">'+esc((u.groups||[]).join(', '))+'</td><td>'+esc(u.shell)+'</td>'
-          +'<td style="text-align:right"><button class="btn icon" data-pw="'+esc(u.username)+'" title="Passwort setzen">🔑</button> '
-          +'<button class="btn danger" data-dellin="'+esc(u.username)+'" title="Löschen">🗑</button></td></tr>';
+        h+='<tr><td><b>'+esc(u.username)+'</b>'+(sudo?' <span class="key" title="sudo">⛨</span>':'')+'</td>'
+          +'<td class="mono">'+u.uid+'</td><td class="wrap muted">'+esc((u.groups||[]).join(', '))+'</td><td class="mono">'+esc(u.shell)+'</td>'
+          +'<td class="actions"><button class="btn xs icon" data-pw="'+esc(u.username)+'" title="Passwort setzen">'+KEY+'</button> '
+          +'<button class="btn xs danger icon" data-dellin="'+esc(u.username)+'" title="Löschen">'+TRASH+'</button></td></tr>';
       });
       h+='</tbody></table>'; document.getElementById('lin').innerHTML=h;
       document.querySelectorAll('[data-dellin]').forEach(function(b){ b.onclick=function(){ var n=b.getAttribute('data-dellin'); if(!confirm('Linux-Benutzer "'+n+'" löschen?'))return; var rm=confirm('Home-Verzeichnis auch löschen?')?'?removeHome=1':''; DEL('/app/users/api/linux/users/'+encodeURIComponent(n)+rm).then(function(){msg('Benutzer gelöscht.');loadLin();}).catch(function(e){msg(e.message,true);}); }; });
       document.querySelectorAll('[data-pw]').forEach(function(b){ b.onclick=function(){ var n=b.getAttribute('data-pw'); var p=prompt('Neues Passwort für '+n+':'); if(!p)return; POST('/app/users/api/linux/users/'+encodeURIComponent(n)+'/password',{password:p}).then(function(){msg('Passwort gesetzt.');}).catch(function(e){msg(e.message,true);}); }; });
-    }).catch(function(e){ document.getElementById('lin').innerHTML='<div style="color:var(--err)">'+esc(e.message)+'</div>'; });
+    }).catch(function(e){ document.getElementById('lin').innerHTML='<div style="color:var(--color-error)">'+esc(e.message)+'</div>'; });
   }
-  document.getElementById('add-lin').onclick=function(){ toggle('form-lin'); };
-  document.getElementById('l-cancel').onclick=function(){ toggle('form-lin'); };
+  document.getElementById('add-lin').onclick=function(){ var f=document.getElementById('form-lin'); f.style.display=f.style.display==='none'?'flex':'none'; };
+  document.getElementById('l-cancel').onclick=function(){ document.getElementById('form-lin').style.display='none'; };
   document.getElementById('l-save').onclick=function(){
     var u=document.getElementById('l-user').value.trim(), p=document.getElementById('l-pass').value, sudo=document.getElementById('l-sudo').checked;
     if(!u){msg('Benutzername nötig.',true);return;}
-    POST('/app/users/api/linux/users',{username:u,password:p,sudo:sudo}).then(function(){ msg('Benutzer angelegt.'); toggle('form-lin'); document.getElementById('l-user').value='';document.getElementById('l-pass').value=''; loadLin(); }).catch(function(e){msg(e.message,true);});
+    POST('/app/users/api/linux/users',{username:u,password:p,sudo:sudo}).then(function(){ msg('Benutzer angelegt.'); document.getElementById('form-lin').style.display='none'; document.getElementById('l-user').value='';document.getElementById('l-pass').value=''; loadLin(); }).catch(function(e){msg(e.message,true);});
   };
 
   loadWeb(); loadLin();
