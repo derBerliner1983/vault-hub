@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SMB-Freigaben</title>
+<style>
+  :root{--bg:#1C1C1F;--surface:#26262B;--sunken:#18181B;--fg:#F4F4F5;--muted:#A1A1AA;--faint:#52525B;--border:rgba(255,255,255,.08);--accent:#34D399;--err:#F87171;--warn:#FBBF24}
+  :root[data-theme="light"]{--bg:#F7F7F8;--surface:#FFF;--sunken:#F1F1F3;--fg:#0B0B0F;--muted:#52525B;--faint:#A1A1AA;--border:rgba(0,0,0,.08);--accent:#10B981;--err:#DC2626;--warn:#D97706}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,sans-serif;padding:16px;font-size:13px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
+  .head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .head h3{margin:0;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  .head .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:500;font-size:12px}
+  .btn{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#052E20;font-weight:600}
+  .btn.sm{padding:4px 10px;font-size:12px}
+  .btn.danger{color:var(--err);border-color:transparent}
+  .pill{padding:1px 9px;border-radius:999px;font-size:11px}
+  .on{background:rgba(52,211,153,.15);color:var(--accent)}.off{background:rgba(255,255,255,.08);color:var(--muted)}
+  input{font:inherit;padding:6px 9px;border-radius:8px;border:1px solid var(--border);background:var(--sunken);color:var(--fg)}
+  label.ck{display:flex;align-items:center;gap:6px;color:var(--muted)}
+  .form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  #msg{display:none;margin-bottom:12px;padding:8px 12px;border-radius:8px}
+  .mono{font-family:ui-monospace,monospace;color:var(--muted)}
+  .muted{color:var(--faint);font-size:12px}
+</style>
+</head>
+<body>
+<div id="msg"></div>
+<div id="app"><div class="muted">Lade…</div></div>
+<script>
+(function(){
+  var params=new URLSearchParams(location.search);
+  document.documentElement.setAttribute('data-theme',(params.get('theme')||'dark')==='light'?'light':'dark');
+  var app=document.getElementById('app'),msgEl=document.getElementById('msg');
+  function msg(t,err){ msgEl.style.display=t?'block':'none'; msgEl.textContent=t||''; msgEl.style.background=err?'rgba(248,113,113,.15)':'rgba(52,211,153,.15)'; msgEl.style.color=err?'var(--err)':'var(--accent)'; }
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  var API='/app/shares/api';
+  function j(url,opts){ return fetch(url,Object.assign({credentials:'include'},opts||{})).then(function(r){return r.json().catch(function(){return{};}).then(function(d){ if(!r.ok) throw new Error(d.error||('HTTP '+r.status)); return d; });}); }
+  function POST(p,b){ return j(API+p,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined}); }
+
+  function render(d){
+    if(!d.available){ app.innerHTML='<div class="card"><h3>Samba</h3><div>'+esc(d.message||'Samba nicht installiert')+'</div><div class="muted" style="margin-top:6px">Installiere Samba (z. B. per System-Updates/Paketverwaltung: <span class="mono">apt install samba</span>), dann neu laden.</div></div>'; return; }
+    var h='';
+    // Status/Dienst
+    h+='<div class="card"><div class="head"><h3>Samba-Dienst</h3><div class="r">'
+      +'<span class="pill '+(d.running?'on':'off')+'">'+(d.running?'läuft':'gestoppt')+'</span>'
+      +'<span class="pill '+(d.firewallOpen?'on':'off')+'">Firewall '+(d.firewallOpen?'offen (LAN)':'zu')+'</span>'
+      +'</div></div><div class="form">'
+      +'<button class="btn sm" data-svc="start">Start</button><button class="btn sm" data-svc="stop">Stop</button><button class="btn sm" data-svc="restart">Restart</button>'
+      +'</div></div>';
+    // Freigaben
+    h+='<div class="card"><div class="head"><h3>Freigaben</h3></div>';
+    if((d.shares||[]).length){
+      h+='<table><thead><tr><th>Name</th><th>Pfad</th><th>Zugriff</th><th>Gast</th><th>Sichtbar</th><th></th></tr></thead><tbody>';
+      d.shares.forEach(function(s){
+        h+='<tr><td><b>'+esc(s.name)+'</b></td><td class="mono">'+esc(s.path)+'</td>'
+          +'<td>'+(s.readOnly?'nur lesen':'schreiben')+'</td><td>'+(s.guestOk?'ja':'nein')+'</td><td>'+(s.browseable?'ja':'nein')+'</td>'
+          +'<td style="text-align:right"><button class="btn sm danger" data-del="'+esc(s.name)+'">🗑</button></td></tr>';
+      });
+      h+='</tbody></table>';
+    } else h+='<div class="muted">Noch keine Freigaben.</div>';
+    h+='<div class="form"><input id="s-name" placeholder="Name" style="width:120px"/><input id="s-path" placeholder="/srv/freigabe" style="flex:1;min-width:160px"/>'
+      +'<label class="ck"><input type="checkbox" id="s-ro"/> nur lesen</label><label class="ck"><input type="checkbox" id="s-guest"/> Gast erlaubt</label>'
+      +'<button class="btn primary sm" id="s-add">+ Freigabe</button></div></div>';
+    // SMB-User
+    h+='<div class="card"><div class="head"><h3>SMB-Benutzer</h3></div>'
+      +'<div class="muted">Muss bereits als Linux-Benutzer existieren (siehe Benutzer-Plugin).</div>'
+      +'<div class="form"><input id="u-name" placeholder="Benutzername" style="width:150px"/><input id="u-pass" type="password" placeholder="SMB-Passwort"/><button class="btn primary sm" id="u-add">Setzen</button></div></div>';
+    app.innerHTML=h; wire();
+  }
+  function wire(){
+    document.querySelectorAll('[data-svc]').forEach(function(b){ b.onclick=function(){ POST('/service',{action:b.getAttribute('data-svc')}).then(function(){msg('Dienst: '+b.getAttribute('data-svc'));load();}).catch(function(e){msg(e.message,true);}); }; });
+    document.querySelectorAll('[data-del]').forEach(function(b){ b.onclick=function(){ if(!confirm('Freigabe "'+b.getAttribute('data-del')+'" löschen?'))return; j(API+'/'+encodeURIComponent(b.getAttribute('data-del')),{method:'DELETE'}).then(function(){msg('Gelöscht.');load();}).catch(function(e){msg(e.message,true);}); }; });
+    var add=document.getElementById('s-add'); if(add)add.onclick=function(){
+      var name=document.getElementById('s-name').value.trim(),path=document.getElementById('s-path').value.trim();
+      if(!name||!path){msg('Name und Pfad nötig.',true);return;}
+      POST('',{name:name,path:path,readOnly:document.getElementById('s-ro').checked,guestOk:document.getElementById('s-guest').checked,browseable:true}).then(function(){msg('Freigabe angelegt.');load();}).catch(function(e){msg(e.message,true);});
+    };
+    var ua=document.getElementById('u-add'); if(ua)ua.onclick=function(){
+      var u=document.getElementById('u-name').value.trim(),p=document.getElementById('u-pass').value;
+      if(!u||!p){msg('Benutzer und Passwort nötig.',true);return;}
+      POST('/user',{username:u,password:p}).then(function(){msg('SMB-Benutzer gesetzt.');document.getElementById('u-pass').value='';}).catch(function(e){msg(e.message,true);});
+    };
+  }
+  function load(){ j(API+'/status').then(render).catch(function(e){ msg(e.message,true); }); }
+  load();
+})();
+</script>
+</body>
+</html>

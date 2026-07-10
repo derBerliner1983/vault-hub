@@ -74,6 +74,18 @@
       "permissions": ["system.read", "system.exec", "files.manage"]
     },
     {
+      "id": "shares",
+      "name": "SMB-Freigaben",
+      "version": "1.0.0",
+      "type": "app",
+      "source": "github:derBerliner1983/vault-hub/plugins/shares",
+      "description": {
+        "de": "SMB/Samba-Freigaben anlegen und verwalten, Dienst steuern und SMB-Benutzer setzen.",
+        "en": "Create and manage SMB/Samba shares, control the service and set SMB users."
+      },
+      "permissions": ["system.read", "system.exec", "system.service"]
+    },
+    {
       "id": "ssh",
       "name": "SSH-Zugang",
       "version": "1.0.0",
