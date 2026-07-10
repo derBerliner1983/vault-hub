@@ -2,11 +2,11 @@ import { useParams } from 'react-router-dom';
 import { Topbar } from '../components/layout/Topbar';
 import { tt } from '../lib/i18n';
 import { useInstalledPlugins } from '../lib/plugins';
+import { pluginPages } from '../plugin-pages';
 
-// Generischer Host für Typ-B-Apps: bettet die Plugin-UI per iframe unter
-// /app/<id>/ ein. Das gemeinsame Design-Kit (tokens.css) wird vom Plugin
-// eingebunden, damit es sich nahtlos einfügt; das Theme wird als Query
-// (?theme=) durchgereicht.
+// Host für Plugin-Seiten. Bevorzugt eine NATIVE React-Seite (aus Core-Hub
+// portiert, pixelgleich) wenn für die Plugin-ID registriert; sonst bettet es die
+// Plugin-UI per iframe unter /app/<id>/ ein (?theme= durchgereicht).
 export function PluginApp() {
   const { id } = useParams<{ id: string }>();
   const { plugins, loading } = useInstalledPlugins();
@@ -15,6 +15,12 @@ export function PluginApp() {
 
   if (loading) {
     return <div style={{ display: 'grid', placeItems: 'center', height: '100%' }}><span className="spinner" /></div>;
+  }
+
+  // Native Seite bevorzugen (nur wenn das Plugin installiert ist → Store schaltet frei).
+  const Native = id ? pluginPages[id] : undefined;
+  if (plugin && Native) {
+    return <Native />;
   }
 
   if (!plugin) {

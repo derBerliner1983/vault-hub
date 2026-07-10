@@ -96,7 +96,8 @@ function network() {
     const prev = prevNet && prevNet[iface];
     const rx_sec = prev && dt > 0 ? Math.max(0, Math.round((cur[iface].rx - prev.rx) / dt)) : 0;
     const tx_sec = prev && dt > 0 ? Math.max(0, Math.round((cur[iface].tx - prev.tx) / dt)) : 0;
-    return { iface, rx_bytes: cur[iface].rx, tx_bytes: cur[iface].tx, rx_sec, tx_sec };
+    const operstate = readFile('/sys/class/net/' + iface + '/operstate').trim() || 'unknown';
+    return { iface, rx_bytes: cur[iface].rx, tx_bytes: cur[iface].tx, rx_sec, tx_sec, operstate };
   });
   prevNet = cur; prevNetTs = now;
   return res;
@@ -141,7 +142,21 @@ module.exports.register = function register(fastify, ctx) {
   fastify.get('/app/dashboard/api/stats', async (req, reply) => {
     if (!(await guard(req, reply))) return;
     try {
-      reply.send({ cpu: cpuUsage(), memory: memory(), disk: disks(), network: network(), os: osInfo(), gpu: gpus() });
+      const cpu = cpuUsage();
+      const o = osInfo();
+      const m = memory();
+      const speed = (() => { try { return Math.round((os.cpus()[0].speed / 1000) * 10) / 10 || 0; } catch (_) { return 0; } })();
+      reply.send({
+        cpu: { usage: cpu.usage, cores: o.cores, brand: o.cpuBrand, speed, perCore: cpu.perCore },
+        memory: {
+          total: m.total, used: m.used, free: m.free, available: m.free, percent: m.percent,
+          breakdown: { system: m.used, docker: 0, vm: 0, free: m.breakdown.free },
+        },
+        disk: disks().map((d) => ({ ...d, type: '' })),
+        network: network(),
+        os: { hostname: o.hostname, platform: 'linux', distro: o.distro, release: '', kernel: o.kernel, arch: o.arch, uptime: o.uptime },
+        gpu: gpus().map((g) => ({ ...g, unified: g.vendor === 'amd' && !g.vramTotalMb })),
+      });
     } catch (err) {
       reply.status(500).send({ error: err instanceof Error ? err.message : 'stats error' });
     }
