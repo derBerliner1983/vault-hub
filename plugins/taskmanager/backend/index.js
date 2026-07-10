@@ -47,10 +47,16 @@ module.exports.register = function register(fastify, ctx) {
   // ── Dienste (systemd) ──
   fastify.get('/app/taskmanager/api/services', async (req, reply) => {
     if (!(await auth(req, reply))) return;
-    const out = ctx.safeExec('systemctl list-units --type=service --all --no-pager --no-legend --plain 2>/dev/null | head -160', 6000);
+    const out = ctx.safeExec('systemctl list-units --type=service --all --no-pager --no-legend --plain 2>/dev/null | head -200', 6000);
+    // Autostart-Status gebündelt ermitteln
+    const enabledSet = new Set(
+      ctx.safeExec('systemctl list-unit-files --type=service --state=enabled --no-legend --plain 2>/dev/null', 6000)
+        .split('\n').map((l) => l.trim().split(/\s+/)[0]).filter(Boolean)
+    );
     const services = out.split('\n').map((line) => {
       const p = line.trim().replace(/^●\s*/, '').split(/\s+/);
-      return { name: p[0] || '', load: p[1] || '', active: p[2] || '', sub: p[3] || '', description: p.slice(4).join(' ') };
+      const name = p[0] || '';
+      return { name, load: p[1] || '', active: p[2] || '', sub: p[3] || '', description: p.slice(4).join(' '), enabled: enabledSet.has(name) };
     }).filter((s) => s.name.endsWith('.service'));
     reply.send({ services });
   });

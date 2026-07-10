@@ -16,6 +16,14 @@ export interface GpuStat {
   unified: boolean;
 }
 
+export interface ProcessInfo {
+  pid: number; name: string; cpu: number; mem: number; memRss: number; user: string; state: string; command: string;
+}
+
+export interface SystemService {
+  name: string; load: string; active: string; sub: string; description: string; enabled?: boolean;
+}
+
 export interface SystemStats {
   cpu: { usage: number; cores: number; brand: string; speed: number; perCore: number[] };
   memory: {

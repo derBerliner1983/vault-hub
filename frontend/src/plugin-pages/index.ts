@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import { DashboardPage } from './DashboardPage';
+import { TaskManagerPage } from './TaskManagerPage';
 
 // Native Feature-Seiten (aus Core-Hub portiert), pro Plugin-ID. Ist eine ID hier
 // registriert UND das Plugin installiert, rendert die Shell diese native Seite
@@ -7,4 +8,5 @@ import { DashboardPage } from './DashboardPage';
 // Seite laufen weiter über den iframe-Host.
 export const pluginPages: Record<string, ComponentType> = {
   dashboard: DashboardPage,
+  taskmanager: TaskManagerPage,
 };

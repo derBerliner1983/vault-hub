@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import {
-  LayoutDashboard, Store, Settings, Moon, Sun, ChevronLeft, ChevronRight,
+  Store, Settings, Moon, Sun, ChevronLeft, ChevronRight,
   LogOut, Puzzle, Shield, TerminalSquare, Bug, Network, HardDrive, type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
@@ -65,7 +65,8 @@ export function Sidebar({ collapsed, onToggle, theme, onThemeToggle, mobileOpen,
     if (!sections.has(section)) sections.set(section, []);
     sections.get(section)!.push(item);
   };
-  add('ÜBERSICHT', { route: '/dashboard', label: tt('Start'), lucide: LayoutDashboard });
+  // "Start" ist als Menüpunkt entfernt – die Landefläche bleibt leer, bis Plugins
+  // installiert sind. Übersichts-Plugins (Dashboard/Taskmanager) erscheinen dann hier.
   for (const p of plugins) {
     const nav = p.contributes?.nav;
     if (nav) add((nav.section || 'APPS').toUpperCase(), { route: nav.route, label: tt(nav.label), icon: nav.icon });
