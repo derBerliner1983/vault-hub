@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Automatisierung</title>
+<style>
+  :root{--bg:#1C1C1F;--surface:#26262B;--sunken:#18181B;--fg:#F4F4F5;--muted:#A1A1AA;--faint:#52525B;--border:rgba(255,255,255,.08);--accent:#34D399;--err:#F87171;--hover:rgba(255,255,255,.04)}
+  :root[data-theme="light"]{--bg:#F7F7F8;--surface:#FFF;--sunken:#F1F1F3;--fg:#0B0B0F;--muted:#52525B;--faint:#A1A1AA;--border:rgba(0,0,0,.08);--accent:#10B981;--err:#DC2626;--hover:rgba(0,0,0,.03)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,sans-serif;padding:16px;font-size:13px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
+  h3{margin:0 0 12px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:500;font-size:12px}
+  tr:hover td{background:var(--hover)}
+  .mono{font-family:ui-monospace,monospace}
+  .btn{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#052E20;font-weight:600}
+  .btn.sm{padding:4px 10px;font-size:12px}
+  .btn.danger{color:var(--err);border-color:transparent}
+  input,select,textarea{font:inherit;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--sunken);color:var(--fg)}
+  .form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  textarea{width:100%;min-height:180px;font-family:ui-monospace,monospace;font-size:12px;resize:vertical;margin-top:8px}
+  #msg{display:none;margin-bottom:12px;padding:8px 12px;border-radius:8px}
+  .muted{color:var(--faint);font-size:12px}
+  .hint{color:var(--faint);font-size:11px;margin-top:4px}
+</style>
+</head>
+<body>
+<div id="msg"></div>
+
+<div class="card">
+  <h3>Neue Aufgabe</h3>
+  <div class="form">
+    <select id="preset" style="width:190px">
+      <option value="">Vorlage wählen…</option>
+      <option value="0 3 * * *">Täglich 03:00</option>
+      <option value="0 * * * *">Stündlich</option>
+      <option value="*/15 * * * *">Alle 15 Min</option>
+      <option value="0 4 * * 0">Sonntags 04:00</option>
+      <option value="0 2 1 * *">Monatlich (1., 02:00)</option>
+    </select>
+    <input id="sched" class="mono" placeholder="m h dom mon dow" style="width:150px"/>
+    <input id="cmd" class="mono" placeholder="Befehl, z. B. /usr/bin/apt-get update" style="flex:1;min-width:200px"/>
+    <input id="cmt" placeholder="Kommentar (optional)" style="width:170px"/>
+    <button class="btn primary" id="add">Hinzufügen</button>
+  </div>
+  <div class="hint">Format: Minute Stunde Tag-des-Monats Monat Wochentag · Beispiel <span class="mono">30 2 * * 1-5</span> = Mo–Fr 02:30</div>
+</div>
+
+<div class="card">
+  <h3>Geplante Aufgaben (crontab)</h3>
+  <div id="list"><div class="muted">Lade…</div></div>
+</div>
+
+<div class="card">
+  <h3>Erweitert: crontab direkt bearbeiten</h3>
+  <textarea id="raw" class="mono"></textarea>
+  <div style="margin-top:8px"><button class="btn" id="save-raw">Rohtext speichern</button></div>
+</div>
+
+<script>
+(function(){
+  var params=new URLSearchParams(location.search);
+  document.documentElement.setAttribute('data-theme',(params.get('theme')||'dark')==='light'?'light':'dark');
+  var msgEl=document.getElementById('msg');
+  function msg(t,err){ msgEl.style.display=t?'block':'none'; msgEl.textContent=t||''; msgEl.style.background=err?'rgba(248,113,113,.15)':'rgba(52,211,153,.15)'; msgEl.style.color=err?'var(--err)':'var(--accent)'; }
+  function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+  var API='/app/automation/api';
+  function j(url,opts){ return fetch(url,Object.assign({credentials:'include'},opts||{})).then(function(r){return r.json().catch(function(){return{};}).then(function(d){ if(!r.ok) throw new Error(d.error||('HTTP '+r.status)); return d; });}); }
+
+  function load(){
+    j(API+'/jobs').then(function(d){
+      document.getElementById('raw').value=d.raw||'';
+      var jobs=d.jobs||[];
+      if(!jobs.length){ document.getElementById('list').innerHTML='<div class="muted">Noch keine geplanten Aufgaben.</div>'; return; }
+      var h='<table><thead><tr><th>Zeitplan</th><th>Befehl</th><th>Kommentar</th><th></th></tr></thead><tbody>';
+      jobs.forEach(function(job){
+        h+='<tr><td class="mono">'+esc(job.schedule)+'</td><td class="mono">'+esc(job.command)+'</td><td class="muted">'+esc(job.comment)+'</td>'
+          +'<td style="text-align:right"><button class="btn sm danger" data-del="'+job.id+'">🗑</button></td></tr>';
+      });
+      h+='</tbody></table>';
+      document.getElementById('list').innerHTML=h;
+      document.querySelectorAll('[data-del]').forEach(function(b){ b.onclick=function(){ if(!confirm('Aufgabe löschen?'))return; j(API+'/jobs/'+b.getAttribute('data-del'),{method:'DELETE'}).then(function(){msg('Gelöscht.');load();}).catch(function(e){msg(e.message,true);}); }; });
+    }).catch(function(e){ document.getElementById('list').innerHTML='<div style="color:var(--err)">'+esc(e.message)+'</div>'; });
+  }
+  document.getElementById('preset').onchange=function(){ if(this.value)document.getElementById('sched').value=this.value; };
+  document.getElementById('add').onclick=function(){
+    var schedule=document.getElementById('sched').value.trim(),command=document.getElementById('cmd').value.trim(),comment=document.getElementById('cmt').value.trim();
+    if(!schedule||!command){msg('Zeitplan und Befehl nötig.',true);return;}
+    j(API+'/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({schedule:schedule,command:command,comment:comment})})
+      .then(function(){msg('Aufgabe hinzugefügt.');document.getElementById('cmd').value='';document.getElementById('cmt').value='';load();}).catch(function(e){msg(e.message,true);});
+  };
+  document.getElementById('save-raw').onclick=function(){
+    if(!confirm('Komplette crontab überschreiben?'))return;
+    j(API+'/raw',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({raw:document.getElementById('raw').value})})
+      .then(function(){msg('crontab gespeichert.');load();}).catch(function(e){msg(e.message,true);});
+  };
+  load();
+})();
+</script>
+</body>
+</html>
