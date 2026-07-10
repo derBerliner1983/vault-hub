@@ -4,106 +4,62 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dashboard</title>
+<link rel="stylesheet" href="/plugin-kit.css" />
 <style>
-  :root{
-    --bg:#1C1C1F; --surface:#26262B; --sunken:#18181B; --fg:#F4F4F5; --muted:#A1A1AA;
-    --faint:#52525B; --border:rgba(255,255,255,.08); --accent:#34D399; --track:rgba(255,255,255,.08);
-  }
-  :root[data-theme="light"]{ --bg:#F7F7F8; --surface:#FFF; --sunken:#F1F1F3; --fg:#0B0B0F; --muted:#52525B; --faint:#A1A1AA; --border:rgba(0,0,0,.08); --accent:#10B981; --track:rgba(0,0,0,.07); }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;padding:16px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px}
-  .card h3{margin:0 0 4px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
-  .sub{font-size:12px;color:var(--faint);margin-bottom:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .donut-wrap{display:flex;align-items:center;gap:16px}
-  .donut{position:relative;width:120px;height:120px;flex-shrink:0}
-  .donut svg{transform:rotate(-90deg)}
-  .donut .val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-  .donut .val b{font-size:24px;font-weight:700;color:var(--accent)}
-  .donut .val span{font-size:11px;color:var(--muted)}
-  .legend{font-size:13px;line-height:1.8;color:var(--muted);min-width:0}
-  .legend b{color:var(--fg)}
-  .cores{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:12px}
-  .core{height:26px;border-radius:4px;background:var(--track);position:relative;overflow:hidden}
-  .core i{position:absolute;bottom:0;left:0;right:0;background:var(--accent);transition:height .4s}
-  .row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:var(--muted)}
-  .row b{color:var(--fg)}
-  .bar{height:6px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:4px}
-  .bar i{display:block;height:100%;background:var(--accent)}
-  #err{color:#F87171;font-size:13px;margin-bottom:12px;display:none}
+  .donut{width:120px;height:120px}
+  .legend{font-size:13px;line-height:1.7;color:var(--color-muted);min-width:0}
+  .legend .row{padding:2px 0}
+  .cores{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:14px}
+  .core{height:26px;border-radius:4px;background:var(--color-border);position:relative;overflow:hidden}
+  .core i{position:absolute;bottom:0;left:0;right:0;background:var(--color-accent);transition:height .4s}
+  #err{color:var(--color-error);font-size:13px;margin-bottom:12px;display:none}
 </style>
 </head>
 <body>
 <div id="err"></div>
-<div class="grid" id="grid"></div>
+<div class="stat-grid" id="grid"></div>
 <script>
 (function(){
   var params=new URLSearchParams(location.search);
-  document.documentElement.setAttribute('data-theme', (params.get('theme')||'dark')==='light'?'light':'dark');
-  var grid=document.getElementById('grid'), errEl=document.getElementById('err');
+  document.documentElement.setAttribute('data-theme',(params.get('theme')||'dark')==='light'?'light':'dark');
+  var grid=document.getElementById('grid'),errEl=document.getElementById('err');
+  var IC={cpu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M9 2v2M15 20v2M9 20v2M2 15h2M2 9h2M20 15h2M20 9h2"/></svg>',
+    ram:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 19v-3M10 19v-3M14 19v-3M18 19v-3M8 11V9M16 11V9M12 11V9M2 15h20M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1.1a2 2 0 0 0 0 3.8V17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-5.1a2 2 0 0 0 0-3.8Z"/></svg>',
+    gpu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a9 3 0 0 0 5 2.69M2 6v10c0 1.66 3.58 3 8 3M2 6a9 3 0 1 0 18 0A9 3 0 0 0 2 6"/><path d="M22 6v10M2 12c0 1.66 3.58 3 8 3"/></svg>',
+    disk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></svg>',
+    net:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/></svg>',
+    sys:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>'};
 
-  function fmtBytes(n){ if(!n&&n!==0)return '–'; var u=['B','KB','MB','GB','TB'],i=0; while(n>=1024&&i<u.length-1){n/=1024;i++;} return n.toFixed(n<10&&i>0?1:0)+' '+u[i]; }
-  function fmtRate(n){ return fmtBytes(n)+'/s'; }
-  function donut(pct,label,sub){
-    var r=52,c=2*Math.PI*r,off=c*(1-Math.max(0,Math.min(100,pct))/100);
+  function fmtBytes(n){ if(n==null)return '–'; var u=['B','KB','MB','GB','TB'],i=0; while(n>=1024&&i<u.length-1){n/=1024;i++;} return n.toFixed(n<10&&i>0?1:0)+' '+u[i]; }
+  function donut(pct){ var r=52,c=2*Math.PI*r,off=c*(1-Math.max(0,Math.min(100,pct))/100);
     return '<div class="donut"><svg width="120" height="120" viewBox="0 0 120 120">'
-      +'<circle cx="60" cy="60" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="10"/>'
-      +'<circle cx="60" cy="60" r="'+r+'" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+off+'"/>'
-      +'</svg><div class="val"><b>'+Math.round(pct)+'%</b><span>'+label+'</span></div></div>'
-      +(sub?'<div class="legend">'+sub+'</div>':'');
-  }
-  function card(title,sub,body){ return '<div class="card"><h3>'+title+'</h3>'+(sub?'<div class="sub">'+sub+'</div>':'')+body+'</div>'; }
+      +'<circle cx="60" cy="60" r="'+r+'" fill="none" stroke="var(--color-border)" stroke-width="10"/>'
+      +'<circle cx="60" cy="60" r="'+r+'" fill="none" stroke="var(--color-accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+off+'"/>'
+      +'</svg><div class="val"><b>'+Math.round(pct)+'%</b><span>Last</span></div></div>'; }
+  function card(icon,title,sub,body){ return '<div class="card"><div class="card-header"><span class="card-icon">'+icon+'</span>'+title+(sub?' <span class="subtle" style="text-transform:none;font-weight:400;letter-spacing:0">· '+sub+'</span>':'')+'</div>'+body+'</div>'; }
+  function rows(arr){ return arr.map(function(r){return '<div class="row between"><span class="k">'+r[0]+'</span><b>'+r[1]+'</b></div>';}).join(''); }
 
   function render(s){
     var html='';
-    // CPU
     var cores=(s.cpu.perCore||[]).map(function(v){return '<div class="core"><i style="height:'+v+'%"></i></div>';}).join('');
-    html+=card('Prozessor', (s.os.cpuBrand||'')+' · '+s.os.cores+' Kerne',
-      '<div class="donut-wrap">'+donut(s.cpu.usage,'Last',
-        '<div class="row"><span>Load (1m)</span><b>'+(s.os.load?s.os.load[0].toFixed(2):'–')+'</b></div>')+'</div>'
-      +'<div class="cores">'+cores+'</div>');
-    // RAM
+    html+=card(IC.cpu,'Prozessor',(s.os.cpuBrand||'')+' · '+s.os.cores+' Kerne',
+      '<div class="donut-wrap">'+donut(s.cpu.usage)+'<div class="legend">'+rows([['Auslastung',s.cpu.usage+' %'],['Load (1m)',s.os.load?s.os.load[0].toFixed(2):'–']])+'</div></div><div class="cores">'+cores+'</div>');
     var m=s.memory;
-    html+=card('Arbeitsspeicher', fmtBytes(m.total),
-      '<div class="donut-wrap">'+donut(m.percent,'RAM',
-        '<div class="row"><span>Belegt</span><b>'+fmtBytes(m.used)+'</b></div>'
-        +'<div class="row"><span>Frei</span><b>'+fmtBytes(m.breakdown.free)+'</b></div>')+'</div>');
-    // GPU
-    (s.gpu||[]).forEach(function(g){
-      html+=card('Grafik', g.name,
-        '<div class="donut-wrap">'+donut(g.utilizationPct||0,'GPU',
-          g.vramTotalMb?('<div class="row"><span>VRAM</span><b>'+g.vramUsedMb+' / '+g.vramTotalMb+' MB</b></div>'):'')+'</div>');
-    });
-    // Disks
-    (s.disk||[]).forEach(function(d){
-      html+=card('Datenträger', d.mount+' ('+d.fs+')',
-        '<div class="donut-wrap">'+donut(d.percent,'belegt',
-          '<div class="row"><span>Belegt</span><b>'+fmtBytes(d.used)+'</b></div>'
-          +'<div class="row"><span>Frei</span><b>'+fmtBytes(d.available)+'</b></div>'
-          +'<div class="row"><span>Größe</span><b>'+fmtBytes(d.size)+'</b></div>')+'</div>');
-    });
-    // Network
-    var net=(s.network||[]).map(function(n){
-      return '<div class="row"><span>'+n.iface+' ↓</span><b>'+fmtRate(n.rx_sec)+'</b></div>'
-        +'<div class="row"><span>'+n.iface+' ↑</span><b>'+fmtRate(n.tx_sec)+'</b></div>';
-    }).join('');
-    if(net) html+=card('Netzwerk','', net);
-    // System
-    var up=s.os.uptime, d=Math.floor(up/86400), h=Math.floor((up%86400)/3600), mi=Math.floor((up%3600)/60);
-    html+=card('System', s.os.hostname,
-      '<div class="row"><span>Distribution</span><b>'+s.os.distro+'</b></div>'
-      +'<div class="row"><span>Kernel</span><b>'+s.os.kernel+' ('+s.os.arch+')</b></div>'
-      +'<div class="row"><span>Uptime</span><b>'+(d?d+'d ':'')+h+'h '+mi+'m</b></div>');
+    html+=card(IC.ram,'Arbeitsspeicher',fmtBytes(m.total),
+      '<div class="donut-wrap">'+donut(m.percent)+'<div class="legend">'+rows([['Belegt',fmtBytes(m.used)],['Frei',fmtBytes(m.breakdown.free)]])+'</div></div>');
+    (s.gpu||[]).forEach(function(g){ html+=card(IC.gpu,'Grafik',g.name,
+      '<div class="donut-wrap">'+donut(g.utilizationPct||0)+'<div class="legend">'+(g.vramTotalMb?rows([['VRAM',g.vramUsedMb+' / '+g.vramTotalMb+' MB']]):'')+'</div></div>'); });
+    (s.disk||[]).forEach(function(d){ html+=card(IC.disk,'Datenträger',d.mount+' ('+d.fs+')',
+      '<div class="donut-wrap">'+donut(d.percent)+'<div class="legend">'+rows([['Belegt',fmtBytes(d.used)],['Frei',fmtBytes(d.available)],['Größe',fmtBytes(d.size)]])+'</div></div>'); });
+    var net=(s.network||[]).map(function(n){return '<div class="row between"><span class="k">'+n.iface+'</span><b>↓ '+fmtBytes(n.rx_sec)+'/s · ↑ '+fmtBytes(n.tx_sec)+'/s</b></div>';}).join('');
+    if(net) html+=card(IC.net,'Netzwerk','',net);
+    var up=s.os.uptime,dd=Math.floor(up/86400),hh=Math.floor((up%86400)/3600),mi=Math.floor((up%3600)/60);
+    html+=card(IC.sys,'System',s.os.hostname,rows([['Distribution',s.os.distro],['Kernel',s.os.kernel+' ('+s.os.arch+')'],['Uptime',(dd?dd+'d ':'')+hh+'h '+mi+'m']]));
     grid.innerHTML=html;
   }
-
-  function tick(){
-    fetch('/app/dashboard/api/stats',{credentials:'include'}).then(function(r){
-      if(!r.ok) throw new Error('HTTP '+r.status); return r.json();
-    }).then(function(s){ errEl.style.display='none'; render(s); })
-    .catch(function(e){ errEl.style.display='block'; errEl.textContent='Fehler beim Laden der Stats: '+e.message; });
-  }
+  function tick(){ fetch('/app/dashboard/api/stats',{credentials:'include'}).then(function(r){ if(!r.ok)throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(s){ errEl.style.display='none'; render(s); }).catch(function(e){ errEl.style.display='block'; errEl.textContent='Fehler: '+e.message; }); }
   tick(); setInterval(tick,2000);
 })();
 </script>

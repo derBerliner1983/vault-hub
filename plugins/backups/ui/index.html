@@ -4,115 +4,54 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Backups</title>
-<style>
-  :root{--bg:#1C1C1F;--surface:#26262B;--sunken:#18181B;--fg:#F4F4F5;--muted:#A1A1AA;--faint:#52525B;--border:rgba(255,255,255,.08);--accent:#34D399;--err:#F87171;--hover:rgba(255,255,255,.04)}
-  :root[data-theme="light"]{--bg:#F7F7F8;--surface:#FFF;--sunken:#F1F1F3;--fg:#0B0B0F;--muted:#52525B;--faint:#A1A1AA;--border:rgba(0,0,0,.08);--accent:#10B981;--err:#DC2626;--hover:rgba(0,0,0,.03)}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,sans-serif;padding:16px;font-size:13px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
-  h3{margin:0 0 12px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
-  table{width:100%;border-collapse:collapse}
-  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border)}
-  th{color:var(--muted);font-weight:500;font-size:12px}
-  tr:hover td{background:var(--hover)}
-  .mono{font-family:ui-monospace,monospace}
-  .num{text-align:right;font-variant-numeric:tabular-nums}
-  .btn{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:#052E20;font-weight:600}
-  .btn.sm{padding:4px 10px;font-size:12px}
-  .btn.danger{color:var(--err);border-color:transparent}
-  input{font:inherit;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--sunken);color:var(--fg)}
-  .form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
-  .pill{padding:1px 9px;border-radius:999px;font-size:11px}
-  .on{background:rgba(52,211,153,.15);color:var(--accent)}.off{background:rgba(255,255,255,.08);color:var(--muted)}
-  #msg{display:none;margin-bottom:12px;padding:8px 12px;border-radius:8px}
-  .muted{color:var(--faint)}
-  .hint{color:var(--faint);font-size:11px;margin-top:4px}
-</style>
+<link rel="stylesheet" href="/plugin-kit.css" />
 </head>
 <body>
-<div id="msg"></div>
-
+<div class="msg" id="msg"></div>
 <div class="card">
-  <h3>Backup erstellen</h3>
-  <div class="form">
-    <input id="src" class="mono" placeholder="/etc  (zu sicherndes Verzeichnis)" style="flex:1;min-width:220px"/>
-    <input id="label" placeholder="Bezeichnung (optional)" style="width:180px"/>
-    <button class="btn primary" id="create">Jetzt sichern</button>
-  </div>
-  <div class="hint">Erstellt ein <span class="mono">.tar.gz</span> des Verzeichnisses im Backup-Speicher des Plugins.</div>
+  <div class="card-header"><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></svg></span> Backup erstellen</div>
+  <div class="form"><input id="src" class="mono grow" placeholder="/etc  (zu sicherndes Verzeichnis)"/><input id="label" placeholder="Bezeichnung (optional)" style="width:180px"/><button class="btn primary" id="create">Jetzt sichern</button></div>
+  <div class="hint">Erstellt ein <span class="mono">.tar.gz</span> im Backup-Speicher des Plugins.</div>
 </div>
-
-<div class="card"><h3>Backups</h3><div id="list"><div class="muted">Lade…</div></div></div>
-
+<div class="card"><div class="card-header">Backups</div><div id="list"><div class="muted">Lade…</div></div></div>
 <div class="card">
-  <h3>Zeitpläne</h3>
+  <div class="card-header">Zeitpläne</div>
   <div id="scheds"><div class="muted">Lade…</div></div>
-  <div class="form">
-    <input id="s-src" class="mono" placeholder="/pfad" style="flex:1;min-width:160px"/>
-    <input id="s-label" placeholder="Label" style="width:120px"/>
-    <input id="s-cron" class="mono" placeholder="m h dom mon dow" value="0 3 * * *" style="width:140px"/>
-    <input id="s-ret" type="number" min="1" value="7" title="Aufbewahrung (Anzahl)" style="width:70px"/>
-    <button class="btn primary sm" id="s-add">+ Zeitplan</button>
-  </div>
+  <div class="form" style="margin-top:12px"><input id="s-src" class="mono grow" placeholder="/pfad"/><input id="s-label" placeholder="Label" style="width:120px"/><input id="s-cron" class="mono" placeholder="m h dom mon dow" value="0 3 * * *" style="width:140px"/><input id="s-ret" type="number" min="1" value="7" title="Aufbewahrung" style="width:70px"/><button class="btn primary sm" id="s-add">+ Zeitplan</button></div>
 </div>
-
 <script>
 (function(){
   var params=new URLSearchParams(location.search);
   document.documentElement.setAttribute('data-theme',(params.get('theme')||'dark')==='light'?'light':'dark');
   var msgEl=document.getElementById('msg');
-  function msg(t,err){ msgEl.style.display=t?'block':'none'; msgEl.textContent=t||''; msgEl.style.background=err?'rgba(248,113,113,.15)':'rgba(52,211,153,.15)'; msgEl.style.color=err?'var(--err)':'var(--accent)'; }
+  var DL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
+  var TR='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+  function msg(t,err){ msgEl.className='msg'+(t?' show '+(err?'err':'ok'):''); msgEl.textContent=t||''; }
   function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
   function fmtBytes(n){if(!n)return '0 B';var u=['B','KB','MB','GB','TB'],i=0;while(n>=1024&&i<4){n/=1024;i++;}return n.toFixed(n<10&&i>0?1:0)+' '+u[i];}
   var API='/app/backups/api';
   function j(url,opts){ return fetch(url,Object.assign({credentials:'include'},opts||{})).then(function(r){return r.json().catch(function(){return{};}).then(function(d){ if(!r.ok) throw new Error(d.error||('HTTP '+r.status)); return d; });}); }
   function POST(p,b){ return j(API+p,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined}); }
-
-  function loadBackups(){
-    j(API+'/list').then(function(d){
-      var b=d.backups||[];
-      if(!b.length){ document.getElementById('list').innerHTML='<div class="muted">Noch keine Backups.</div>'; return; }
-      var h='<table><thead><tr><th>Name</th><th>Quelle</th><th class="num">Größe</th><th>Erstellt</th><th></th></tr></thead><tbody>';
-      b.forEach(function(x){
-        h+='<tr><td><b>'+esc(x.name)+'</b></td><td class="mono">'+esc(x.source)+'</td><td class="num mono">'+fmtBytes(x.size)+'</td>'
-          +'<td class="mono">'+esc((x.created_at||'').slice(0,16).replace('T',' '))+'</td>'
-          +'<td style="text-align:right"><a class="btn sm" href="'+API+'/download/'+x.id+'">⬇</a> '
-          +'<button class="btn sm" data-restore="'+x.id+'" data-src="'+esc(x.source)+'">Wiederherstellen</button> '
-          +'<button class="btn sm danger" data-del="'+x.id+'">🗑</button></td></tr>';
-      });
-      h+='</tbody></table>'; document.getElementById('list').innerHTML=h;
-      document.querySelectorAll('[data-del]').forEach(function(bt){ bt.onclick=function(){ if(!confirm('Backup löschen?'))return; j(API+'/'+bt.getAttribute('data-del'),{method:'DELETE'}).then(function(){msg('Gelöscht.');loadBackups();}).catch(function(e){msg(e.message,true);}); }; });
-      document.querySelectorAll('[data-restore]').forEach(function(bt){ bt.onclick=function(){ var t=prompt('Zielverzeichnis für Wiederherstellung:',bt.getAttribute('data-src')); if(!t)return; POST('/restore/'+bt.getAttribute('data-restore'),{target:t}).then(function(){msg('Wiederhergestellt nach '+t);}).catch(function(e){msg(e.message,true);}); }; });
-    }).catch(function(e){ document.getElementById('list').innerHTML='<div style="color:var(--err)">'+esc(e.message)+'</div>'; });
-  }
-  function loadScheds(){
-    j(API+'/schedules').then(function(d){
-      var s=d.schedules||[];
-      if(!s.length){ document.getElementById('scheds').innerHTML='<div class="muted">Keine Zeitpläne.</div>'; return; }
-      var h='<table><thead><tr><th>Quelle</th><th>Zeitplan</th><th>Aufbew.</th><th>Status</th><th>Letzter Lauf</th><th></th></tr></thead><tbody>';
-      s.forEach(function(x){
-        h+='<tr><td class="mono">'+esc(x.source)+'</td><td class="mono">'+esc(x.schedule)+'</td><td>'+x.retention+'</td>'
-          +'<td><span class="pill '+(x.enabled?'on':'off')+'">'+(x.enabled?'aktiv':'pausiert')+'</span></td>'
-          +'<td class="mono muted">'+esc((x.last_run||'–').slice(0,16).replace('T',' '))+'</td>'
-          +'<td style="text-align:right"><button class="btn sm" data-tog="'+x.id+'" data-en="'+(!x.enabled)+'">'+(x.enabled?'Pause':'Start')+'</button> '
-          +'<button class="btn sm danger" data-sdel="'+x.id+'">🗑</button></td></tr>';
-      });
-      h+='</tbody></table>'; document.getElementById('scheds').innerHTML=h;
-      document.querySelectorAll('[data-tog]').forEach(function(b){ b.onclick=function(){ POST('/schedules/'+b.getAttribute('data-tog')+'/toggle',{enabled:b.getAttribute('data-en')==='true'}).then(loadScheds).catch(function(e){msg(e.message,true);}); }; });
-      document.querySelectorAll('[data-sdel]').forEach(function(b){ b.onclick=function(){ if(!confirm('Zeitplan löschen?'))return; j(API+'/schedules/'+b.getAttribute('data-sdel'),{method:'DELETE'}).then(loadScheds).catch(function(e){msg(e.message,true);}); }; });
-    }).catch(function(e){ document.getElementById('scheds').innerHTML='<div style="color:var(--err)">'+esc(e.message)+'</div>'; });
-  }
-  document.getElementById('create').onclick=function(){
-    var src=document.getElementById('src').value.trim(),label=document.getElementById('label').value.trim();
-    if(!src){msg('Quellpfad nötig.',true);return;}
-    msg('Sichere…'); POST('/create',{source:src,label:label}).then(function(){msg('Backup erstellt.');loadBackups();}).catch(function(e){msg(e.message,true);});
-  };
-  document.getElementById('s-add').onclick=function(){
-    var src=document.getElementById('s-src').value.trim(),label=document.getElementById('s-label').value.trim(),cron=document.getElementById('s-cron').value.trim(),ret=document.getElementById('s-ret').value;
-    if(!src||!cron){msg('Quelle und Zeitplan nötig.',true);return;}
-    POST('/schedules',{source:src,label:label,schedule:cron,retention:parseInt(ret)||7}).then(function(){msg('Zeitplan angelegt.');loadScheds();}).catch(function(e){msg(e.message,true);});
-  };
+  function loadBackups(){ j(API+'/list').then(function(d){
+    var b=d.backups||[];
+    if(!b.length){ document.getElementById('list').innerHTML='<div class="muted">Noch keine Backups.</div>'; return; }
+    var h='<table><thead><tr><th>Name</th><th>Quelle</th><th class="num">Größe</th><th>Erstellt</th><th></th></tr></thead><tbody>';
+    b.forEach(function(x){ h+='<tr><td><b>'+esc(x.name)+'</b></td><td class="mono muted">'+esc(x.source)+'</td><td class="num mono">'+fmtBytes(x.size)+'</td><td class="mono muted">'+esc((x.created_at||'').slice(0,16).replace('T',' '))+'</td><td class="num"><a class="btn xs icon" href="'+API+'/download/'+x.id+'" title="Download">'+DL+'</a> <button class="btn xs" data-restore="'+x.id+'" data-src="'+esc(x.source)+'">Wiederherstellen</button> <button class="btn xs danger icon" data-del="'+x.id+'" title="Löschen">'+TR+'</button></td></tr>'; });
+    h+='</tbody></table>'; document.getElementById('list').innerHTML=h;
+    document.querySelectorAll('[data-del]').forEach(function(bt){ bt.onclick=function(){ if(!confirm('Backup löschen?'))return; j(API+'/'+bt.getAttribute('data-del'),{method:'DELETE'}).then(function(){msg('Gelöscht.');loadBackups();}).catch(function(e){msg(e.message,true);}); }; });
+    document.querySelectorAll('[data-restore]').forEach(function(bt){ bt.onclick=function(){ var t=prompt('Zielverzeichnis für Wiederherstellung:',bt.getAttribute('data-src')); if(!t)return; POST('/restore/'+bt.getAttribute('data-restore'),{target:t}).then(function(){msg('Wiederhergestellt nach '+t);}).catch(function(e){msg(e.message,true);}); }; });
+  }).catch(function(e){ document.getElementById('list').innerHTML='<div style="color:var(--color-error)">'+esc(e.message)+'</div>'; }); }
+  function loadScheds(){ j(API+'/schedules').then(function(d){
+    var s=d.schedules||[];
+    if(!s.length){ document.getElementById('scheds').innerHTML='<div class="muted">Keine Zeitpläne.</div>'; return; }
+    var h='<table><thead><tr><th>Quelle</th><th>Zeitplan</th><th>Aufbew.</th><th>Status</th><th>Letzter Lauf</th><th></th></tr></thead><tbody>';
+    s.forEach(function(x){ h+='<tr><td class="mono">'+esc(x.source)+'</td><td class="mono">'+esc(x.schedule)+'</td><td>'+x.retention+'</td><td><span class="pill '+(x.enabled?'on':'off')+'">'+(x.enabled?'aktiv':'pausiert')+'</span></td><td class="mono muted">'+esc((x.last_run||'–').slice(0,16).replace('T',' '))+'</td><td class="num"><button class="btn xs" data-tog="'+x.id+'" data-en="'+(!x.enabled)+'">'+(x.enabled?'Pause':'Start')+'</button> <button class="btn xs danger" data-sdel="'+x.id+'">Löschen</button></td></tr>'; });
+    h+='</tbody></table>'; document.getElementById('scheds').innerHTML=h;
+    document.querySelectorAll('[data-tog]').forEach(function(b){ b.onclick=function(){ POST('/schedules/'+b.getAttribute('data-tog')+'/toggle',{enabled:b.getAttribute('data-en')==='true'}).then(loadScheds).catch(function(e){msg(e.message,true);}); }; });
+    document.querySelectorAll('[data-sdel]').forEach(function(b){ b.onclick=function(){ if(!confirm('Zeitplan löschen?'))return; j(API+'/schedules/'+b.getAttribute('data-sdel'),{method:'DELETE'}).then(loadScheds).catch(function(e){msg(e.message,true);}); }; });
+  }).catch(function(e){ document.getElementById('scheds').innerHTML='<div style="color:var(--color-error)">'+esc(e.message)+'</div>'; }); }
+  document.getElementById('create').onclick=function(){ var src=document.getElementById('src').value.trim(),label=document.getElementById('label').value.trim(); if(!src){msg('Quellpfad nötig.',true);return;} msg('Sichere…'); POST('/create',{source:src,label:label}).then(function(){msg('Backup erstellt.');loadBackups();}).catch(function(e){msg(e.message,true);}); };
+  document.getElementById('s-add').onclick=function(){ var src=document.getElementById('s-src').value.trim(),label=document.getElementById('s-label').value.trim(),cron=document.getElementById('s-cron').value.trim(),ret=document.getElementById('s-ret').value; if(!src||!cron){msg('Quelle und Zeitplan nötig.',true);return;} POST('/schedules',{source:src,label:label,schedule:cron,retention:parseInt(ret)||7}).then(function(){msg('Zeitplan angelegt.');loadScheds();}).catch(function(e){msg(e.message,true);}); };
   loadBackups(); loadScheds();
 })();
 </script>

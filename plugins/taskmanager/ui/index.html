@@ -4,49 +4,26 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Taskmanager</title>
+<link rel="stylesheet" href="/plugin-kit.css" />
 <style>
-  :root{--bg:#1C1C1F;--surface:#26262B;--sunken:#18181B;--fg:#F4F4F5;--muted:#A1A1AA;--faint:#52525B;--border:rgba(255,255,255,.08);--accent:#34D399;--err:#F87171;--hover:rgba(255,255,255,.04)}
-  :root[data-theme="light"]{--bg:#F7F7F8;--surface:#FFF;--sunken:#F1F1F3;--fg:#0B0B0F;--muted:#52525B;--faint:#A1A1AA;--border:rgba(0,0,0,.08);--accent:#10B981;--err:#DC2626;--hover:rgba(0,0,0,.03)}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,sans-serif;padding:16px;font-size:13px}
-  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:12px}
-  .tab{padding:8px 14px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;background:none;border-top:0;border-left:0;border-right:0;font:inherit}
-  .tab.on{color:var(--fg);font-weight:600;border-bottom-color:var(--accent)}
-  table{width:100%;border-collapse:collapse}
-  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
-  th{color:var(--muted);font-weight:500;font-size:12px;position:sticky;top:0;background:var(--bg)}
-  td.cmd{max-width:340px;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
-  tr:hover td{background:var(--hover)}
-  .num{text-align:right;font-variant-numeric:tabular-nums}
-  .btn{font:inherit;font-size:12px;padding:3px 9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer}
-  .btn.danger{color:var(--err);border-color:var(--err)}
-  .btn:disabled{opacity:.5;cursor:default}
-  .bar{display:inline-block;width:44px;height:6px;border-radius:99px;background:var(--border);vertical-align:middle;margin-right:6px;overflow:hidden}
-  .bar i{display:block;height:100%;background:var(--accent)}
-  .pill{padding:1px 8px;border-radius:99px;font-size:11px}
-  .on-p{background:rgba(52,211,153,.15);color:var(--accent)}
-  .off-p{background:rgba(255,255,255,.08);color:var(--muted)}
-  #err{color:var(--err);margin:8px 0;display:none}
-  .scroll{max-height:calc(100vh - 90px);overflow:auto}
-  .search{width:220px;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--sunken);color:var(--fg);margin-bottom:10px}
+  .bar{display:inline-block;width:46px;height:6px;border-radius:99px;background:var(--color-border);vertical-align:middle;margin-right:6px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--color-accent)}
+  .search{width:240px}
+  th{position:sticky;top:0;background:var(--color-surface)}
 </style>
 </head>
 <body>
-<div class="tabs">
-  <button class="tab on" id="t-proc">Prozesse</button>
-  <button class="tab" id="t-svc">Dienste</button>
-</div>
-<div id="err"></div>
-<input class="search" id="search" placeholder="Filtern…" />
-<div class="scroll"><div id="content"></div></div>
+<div class="tabs"><button class="tab on" id="t-proc">Prozesse</button><button class="tab" id="t-svc">Dienste</button></div>
+<div class="msg" id="msg"></div>
+<input class="search" id="search" placeholder="Filtern…" style="margin-bottom:12px" />
+<div class="card" style="padding:0"><div class="scroll" id="content"><div class="muted" style="padding:24px">Lade…</div></div></div>
 <script>
 (function(){
   var params=new URLSearchParams(location.search);
   document.documentElement.setAttribute('data-theme',(params.get('theme')||'dark')==='light'?'light':'dark');
-  var content=document.getElementById('content'),errEl=document.getElementById('err'),search=document.getElementById('search');
+  var content=document.getElementById('content'),msgEl=document.getElementById('msg'),search=document.getElementById('search');
   var tab='proc',timer=null,lastProc=[],lastSvc=[];
-
-  function err(m){ errEl.style.display=m?'block':'none'; errEl.textContent=m||''; }
+  function msg(m){ msgEl.className='msg'+(m?' show err':''); msgEl.textContent=m||''; }
   function fmtBytes(n){var u=['B','KB','MB','GB'],i=0;while(n>=1024&&i<3){n/=1024;i++;}return n.toFixed(n<10&&i>0?1:0)+' '+u[i];}
   function esc(s){return String(s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
   function api(path,opts){return fetch('/app/taskmanager/api/'+path,Object.assign({credentials:'include'},opts||{}));}
@@ -54,60 +31,40 @@
   function renderProc(){
     var q=search.value.toLowerCase();
     var rows=lastProc.filter(function(p){return !q||(p.name+' '+p.command+' '+p.user+' '+p.pid).toLowerCase().indexOf(q)>=0;});
-    var html='<table><thead><tr><th>PID</th><th>Name</th><th>Benutzer</th><th class="num">CPU %</th><th class="num">RAM</th><th>Kommando</th><th></th></tr></thead><tbody>';
+    var h='<table><thead><tr><th>PID</th><th>Name</th><th>Benutzer</th><th class="num">CPU %</th><th class="num">RAM</th><th>Kommando</th><th></th></tr></thead><tbody>';
     rows.forEach(function(p){
-      html+='<tr><td class="num">'+p.pid+'</td><td><b>'+esc(p.name)+'</b></td><td>'+esc(p.user)+'</td>'
+      h+='<tr><td class="num mono">'+p.pid+'</td><td><b>'+esc(p.name)+'</b></td><td>'+esc(p.user)+'</td>'
         +'<td class="num"><span class="bar"><i style="width:'+Math.min(100,p.cpu)+'%"></i></span>'+p.cpu.toFixed(1)+'</td>'
-        +'<td class="num">'+fmtBytes(p.memRss)+'</td><td class="cmd">'+esc(p.command)+'</td>'
-        +'<td><button class="btn danger" data-kill="'+p.pid+'">Beenden</button></td></tr>';
+        +'<td class="num mono">'+fmtBytes(p.memRss)+'</td><td class="wrap muted" style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.command)+'</td>'
+        +'<td class="num"><button class="btn xs danger" data-kill="'+p.pid+'">Beenden</button></td></tr>';
     });
-    html+='</tbody></table>';
-    content.innerHTML=html;
-    content.querySelectorAll('[data-kill]').forEach(function(b){
-      b.onclick=function(){
-        var pid=b.getAttribute('data-kill'); b.disabled=true;
-        api('processes/'+pid+'/kill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({signal:'TERM'})})
-          .then(function(r){return r.json();}).then(function(d){ if(d.error)err(d.error); else load(); })
-          .catch(function(e){err(e.message);});
-      };
-    });
+    h+='</tbody></table>'; content.innerHTML=h;
+    content.querySelectorAll('[data-kill]').forEach(function(b){ b.onclick=function(){ b.disabled=true;
+      api('processes/'+b.getAttribute('data-kill')+'/kill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({signal:'TERM'})})
+        .then(function(r){return r.json();}).then(function(d){ if(d.error)msg(d.error); else load(); }).catch(function(e){msg(e.message);}); }; });
   }
   function renderSvc(){
     var q=search.value.toLowerCase();
     var rows=lastSvc.filter(function(s){return !q||(s.name+' '+s.description).toLowerCase().indexOf(q)>=0;});
-    var html='<table><thead><tr><th>Dienst</th><th>Status</th><th>Beschreibung</th><th></th></tr></thead><tbody>';
-    rows.forEach(function(s){
-      var active=s.active==='active';
-      html+='<tr><td><b>'+esc(s.name)+'</b></td>'
-        +'<td><span class="pill '+(active?'on-p':'off-p')+'">'+esc(s.sub||s.active)+'</span></td>'
-        +'<td class="cmd">'+esc(s.description)+'</td>'
-        +'<td>'+(active?'<button class="btn" data-act="stop" data-svc="'+esc(s.name)+'">Stop</button> <button class="btn" data-act="restart" data-svc="'+esc(s.name)+'">Restart</button>'
-                       :'<button class="btn" data-act="start" data-svc="'+esc(s.name)+'">Start</button>')+'</td></tr>';
+    var h='<table><thead><tr><th>Dienst</th><th>Status</th><th>Beschreibung</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(s){ var active=s.active==='active';
+      h+='<tr><td><b>'+esc(s.name)+'</b></td><td><span class="pill '+(active?'on':'off')+'">'+esc(s.sub||s.active)+'</span></td>'
+        +'<td class="wrap muted">'+esc(s.description)+'</td>'
+        +'<td class="num">'+(active?'<button class="btn xs" data-act="stop" data-svc="'+esc(s.name)+'">Stop</button> <button class="btn xs" data-act="restart" data-svc="'+esc(s.name)+'">Restart</button>':'<button class="btn xs" data-act="start" data-svc="'+esc(s.name)+'">Start</button>')+'</td></tr>';
     });
-    html+='</tbody></table>';
-    content.innerHTML=html;
-    content.querySelectorAll('[data-svc]').forEach(function(b){
-      b.onclick=function(){
-        b.disabled=true;
-        api('services/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({service:b.getAttribute('data-svc'),action:b.getAttribute('data-act')})})
-          .then(function(r){return r.json();}).then(function(d){ if(d.error)err(d.error); else load(); }).catch(function(e){err(e.message);});
-      };
-    });
+    h+='</tbody></table>'; content.innerHTML=h;
+    content.querySelectorAll('[data-svc]').forEach(function(b){ b.onclick=function(){ b.disabled=true;
+      api('services/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({service:b.getAttribute('data-svc'),action:b.getAttribute('data-act')})})
+        .then(function(r){return r.json();}).then(function(d){ if(d.error)msg(d.error); else load(); }).catch(function(e){msg(e.message);}); }; });
   }
   function load(){
-    if(tab==='proc'){
-      api('processes').then(function(r){return r.json();}).then(function(d){ if(d.error)throw new Error(d.error); err(''); lastProc=d.processes||[]; renderProc(); }).catch(function(e){err(e.message);});
-    }else{
-      api('services').then(function(r){return r.json();}).then(function(d){ if(d.error)throw new Error(d.error); err(''); lastSvc=d.services||[]; renderSvc(); }).catch(function(e){err(e.message);});
-    }
+    if(tab==='proc') api('processes').then(function(r){return r.json();}).then(function(d){ if(d.error)throw new Error(d.error); msg(''); lastProc=d.processes||[]; renderProc(); }).catch(function(e){msg(e.message);});
+    else api('services').then(function(r){return r.json();}).then(function(d){ if(d.error)throw new Error(d.error); msg(''); lastSvc=d.services||[]; renderSvc(); }).catch(function(e){msg(e.message);});
   }
-  function setTab(t){
-    tab=t;
+  function setTab(t){ tab=t;
     document.getElementById('t-proc').className='tab'+(t==='proc'?' on':'');
     document.getElementById('t-svc').className='tab'+(t==='svc'?' on':'');
-    if(timer)clearInterval(timer);
-    load();
-    if(t==='proc')timer=setInterval(load,3000);
+    if(timer)clearInterval(timer); load(); if(t==='proc')timer=setInterval(load,3000);
   }
   document.getElementById('t-proc').onclick=function(){setTab('proc');};
   document.getElementById('t-svc').onclick=function(){setTab('svc');};
