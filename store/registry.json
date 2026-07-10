@@ -110,6 +110,18 @@
       "permissions": ["system.exec"]
     },
     {
+      "id": "backups",
+      "name": "Backups",
+      "version": "1.0.0",
+      "type": "app",
+      "source": "github:derBerliner1983/vault-hub/plugins/backups",
+      "description": {
+        "de": "Verzeichnis-Backups als .tar.gz erstellen, wiederherstellen und per Zeitplan automatisieren.",
+        "en": "Create, restore and schedule directory backups as .tar.gz."
+      },
+      "permissions": ["system.read", "system.exec", "files.manage"]
+    },
+    {
       "id": "ssh",
       "name": "SSH-Zugang",
       "version": "1.0.0",

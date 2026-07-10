@@ -53,6 +53,8 @@ export interface PluginManifest {
 export interface PluginContext {
   pluginId: string;
   pluginDir: string;
+  /** Persistenter, update-fester Datenordner des Plugins (überlebt Plugin-Updates). */
+  dataDir: string;
   isRoot: boolean;
   privExec: typeof privExec;
   safeExec: typeof safeExec;
@@ -255,9 +257,12 @@ export async function loadPluginBackends(fastify: FastifyInstance): Promise<void
       const mod: any = requireCJS(entryPath);
       const register = mod.register || mod.default || mod;
       if (typeof register !== 'function') continue;
+      const pluginDataDir = path.join(DATA_DIR, 'plugin-data', id);
+      try { fs.mkdirSync(pluginDataDir, { recursive: true }); } catch { /* */ }
       const ctx: PluginContext = {
         pluginId: id,
         pluginDir,
+        dataDir: pluginDataDir,
         isRoot,
         privExec,
         safeExec,
