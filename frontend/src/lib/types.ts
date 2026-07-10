@@ -16,6 +16,15 @@ export interface GpuStat {
   unified: boolean;
 }
 
+export interface AntivirusScan {
+  running: boolean; path: string; startedAt?: string; finishedAt?: string;
+  scanned: number; infectedCount: number; infected: { file: string; virus: string }[]; error?: string;
+}
+export interface AntivirusStatus {
+  installed: boolean; daemonActive: boolean; freshclamActive: boolean;
+  version: string; defsAgeDays: number | null; message?: string; scan: AntivirusScan;
+}
+
 export interface ProcessInfo {
   pid: number; name: string; cpu: number; mem: number; memRss: number; user: string; state: string; command: string;
 }
