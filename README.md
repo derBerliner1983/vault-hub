@@ -54,6 +54,34 @@ nach einem anderen Port. Vault-Hub läuft als systemd-Dienst `vault-hub`.
 - **Apps/Plugins:** Store bzw. Einstellungen → *Updatefähige Apps* (Versionsvergleich
   gegen die Store-Registry, Update ohne Neukompilieren des Kerns).
 
+## Deinstallation / Reset
+
+`deinstall.sh` setzt das System auf den Stand **vor der Installation** zurück –
+es fasst nur an, was Vault-Hub selbst angelegt/geändert hat:
+
+```bash
+sudo bash deinstall.sh                    # Kern entfernen, Daten behalten
+sudo bash deinstall.sh --purge            # + Daten/DB/Plugins löschen
+sudo bash deinstall.sh --purge --reset-packages          # + per App installierte Pakete entfernen
+sudo bash deinstall.sh --purge --reset-packages --reset-users --yes   # voller Reset ohne Rückfragen
+```
+
+Was passiert:
+- **Kern** (Dienst, Programm, Dienstbenutzer, sudoers, Caddy-Site, Firewallregeln,
+  Daten/DB, **alle in der App gemachten Einstellungen**) wird entfernt.
+- **Plugin-Änderungen** nehmen die Plugins per `uninstall.sh`-Hook selbst zurück
+  (z. B. SMB-Block in `smb.conf` + UFW-Regeln, ClamAV-Dienste).
+- **Audit-Report:** Vor dem Löschen wird ein Protokoll **aller** über die App
+  gemachten Systemänderungen nach `/var/log/vault-hub-uninstall-*.txt` gesichert
+  (installierte Pakete, angelegte Benutzer, Freigaben …). So ist alles
+  nachvollziehbar. *(Für den Detail-Report `sqlite3` installieren.)*
+- **Nicht angetastet:** alles, was du direkt über **Terminal/SSH** gemacht hast –
+  das gehört dir und wird bewusst nicht protokolliert (nur „Terminal geöffnet"
+  wird geloggt, nicht die eingegebenen Befehle).
+- Systemweite Eingriffe (Pakete, Linux-Benutzer) werden **standardmäßig nicht**
+  automatisch entfernt, sondern nur berichtet – erst `--reset-packages` /
+  `--reset-users` entfernen sie (mit Rückfrage).
+
 ## Store
 
 Der Store liest eine `registry.json`. Standardmäßig kommt sie **mit diesem Repo**
