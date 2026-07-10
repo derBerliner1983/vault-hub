@@ -62,6 +62,18 @@
       "permissions": ["system.read", "system.exec", "system.packages"]
     },
     {
+      "id": "filemanager",
+      "name": "Datei-Manager",
+      "version": "1.0.0",
+      "type": "app",
+      "source": "github:derBerliner1983/vault-hub/plugins/filemanager",
+      "description": {
+        "de": "Dateien und Ordner durchsuchen, bearbeiten, hoch-/herunterladen, umbenennen und löschen.",
+        "en": "Browse, edit, up-/download, rename and delete files and folders."
+      },
+      "permissions": ["system.read", "system.exec", "files.manage"]
+    },
+    {
       "id": "ssh",
       "name": "SSH-Zugang",
       "version": "1.0.0",
