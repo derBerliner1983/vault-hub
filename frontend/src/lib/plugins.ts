@@ -59,6 +59,13 @@ export interface StoreItem extends PluginManifest {
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+// Wird nach Install/Uninstall gefeuert, damit Sidebar & Co. sofort neu laden
+// (kein F5 nötig).
+export const PLUGINS_CHANGED = 'vh:plugins-changed';
+function notifyPluginsChanged() {
+  try { window.dispatchEvent(new Event(PLUGINS_CHANGED)); } catch { /* SSR/kein window */ }
+}
+
 // ─── API-Aufrufe (Cookie-basiertes JWT → credentials: 'include') ──────────────
 
 export async function fetchInstalledPlugins(): Promise<PluginManifest[]> {
@@ -92,6 +99,7 @@ export async function installPlugin(id: string, source?: string): Promise<void> 
     const d = await r.json().catch(() => ({}));
     throw new Error(d.error || 'Installation fehlgeschlagen');
   }
+  notifyPluginsChanged();
 }
 
 export async function uninstallPlugin(id: string): Promise<void> {
@@ -103,6 +111,7 @@ export async function uninstallPlugin(id: string): Promise<void> {
     const d = await r.json().catch(() => ({}));
     throw new Error(d.error || 'Deinstallation fehlgeschlagen');
   }
+  notifyPluginsChanged();
 }
 
 // ─── Hook: installierte Plugins laden ─────────────────────────────────────────
@@ -122,7 +131,17 @@ export function useInstalledPlugins() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    void reload();
+    // Nach Install/Uninstall automatisch neu laden (kein F5) + beim Fensterfokus.
+    const onChange = () => { void reload(); };
+    window.addEventListener(PLUGINS_CHANGED, onChange);
+    window.addEventListener('focus', onChange);
+    return () => {
+      window.removeEventListener(PLUGINS_CHANGED, onChange);
+      window.removeEventListener('focus', onChange);
+    };
+  }, [reload]);
 
   return { plugins, loading, reload };
 }

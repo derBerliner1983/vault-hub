@@ -45,10 +45,11 @@ let currentLang: LangCode = (typeof navigator !== 'undefined') ? detectInitial()
 /** Übersetzt einen Schlüssel ODER direkt einen deutschen Quelltext. */
 export function tt(key: string, vars?: Record<string, string | number>): string {
   const dict = DICTS[currentLang] ?? de;
-  // Fallback-Kette: eingestellte Sprache → Deutsch → Englisch → Schlüssel/Quelltext.
-  // So greift bei einer App, die die eingestellte Sprache (noch) nicht mitbringt,
-  // erst Deutsch, dann Englisch. Nach einem App-Update mit der Sprache greift sie automatisch.
-  let s = dict[key] ?? de[key] ?? en[key] ?? key;
+  // Deutsch ist die Basissprache: die deutschen Quelltexte SIND die Schlüssel.
+  // Im Deutsch-Modus (leeres de-Dict) wird also der Schlüssel selbst zurückgegeben –
+  // KEIN Englisch-Fallback. Für andere Sprachen greift deren Wörterbuch, sonst der
+  // deutsche Quelltext (Schlüssel) als Fallback.
+  let s = dict[key] ?? key;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {
       s = s.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
