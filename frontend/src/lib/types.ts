@@ -16,6 +16,14 @@ export interface GpuStat {
   unified: boolean;
 }
 
+export interface UserPublic {
+  id: number; username: string; role: string;
+  totp_enabled?: number; totp_required?: number; created_at?: string;
+}
+export interface LinuxUser {
+  username: string; uid: number; gid: number; home: string; shell: string; groups: string[]; system: boolean;
+}
+
 export interface AntivirusScan {
   running: boolean; path: string; startedAt?: string; finishedAt?: string;
   scanned: number; infectedCount: number; infected: { file: string; virus: string }[]; error?: string;
