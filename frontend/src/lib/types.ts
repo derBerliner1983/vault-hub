@@ -16,6 +16,10 @@ export interface GpuStat {
   unified: boolean;
 }
 
+export interface PackageUpdate {
+  name: string; currentVersion: string; newVersion: string; repo: string;
+}
+
 export interface UserPublic {
   id: number; username: string; role: string;
   totp_enabled?: number; totp_required?: number; created_at?: string;

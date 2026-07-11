@@ -3,6 +3,7 @@ import { DashboardPage } from './DashboardPage';
 import { TaskManagerPage } from './TaskManagerPage';
 import { AntivirusPage } from './AntivirusPage';
 import { UsersPage } from './UsersPage';
+import { SystemUpdatesPage } from './SystemUpdatesPage';
 
 // Native Feature-Seiten (aus Core-Hub portiert), pro Plugin-ID. Ist eine ID hier
 // registriert UND das Plugin installiert, rendert die Shell diese native Seite
@@ -13,4 +14,5 @@ export const pluginPages: Record<string, ComponentType> = {
   taskmanager: TaskManagerPage,
   antivirus: AntivirusPage,
   users: UsersPage,
+  'system-updates': SystemUpdatesPage,
 };
