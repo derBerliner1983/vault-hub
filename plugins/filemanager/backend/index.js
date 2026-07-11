@@ -31,10 +31,12 @@ function statEntry(fp) {
   const stat = fs.statSync(fp);
   let owner = '', group = '';
   try { [owner, group] = execFileSync('stat', ['-c', '%U %G', fp], { encoding: 'utf8', timeout: 3000 }).trim().split(' '); } catch (_) {}
+  const mode = stat.mode;
   return {
     name: path.basename(fp), path: fp, isDir: stat.isDirectory(), isSymlink: stat.isSymbolicLink(),
-    size: stat.size, permissions: (stat.mode & 0o7777).toString(8).padStart(4, '0'),
-    isExecutable: !!(stat.mode & 0o111), owner, group, mtime: stat.mtime.toISOString(),
+    size: stat.size, permissions: (mode & 0o7777).toString(8).padStart(4, '0'), mode,
+    isExecutable: !!(mode & 0o111), ownerExecutable: !!(mode & 0o100), groupExecutable: !!(mode & 0o010), otherExecutable: !!(mode & 0o001),
+    owner, group, mtime: stat.mtime.toISOString(),
   };
 }
 
