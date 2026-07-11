@@ -19,6 +19,12 @@ export interface GpuStat {
 export interface PackageUpdate {
   name: string; currentVersion: string; newVersion: string; repo: string;
 }
+export interface InstalledPackage {
+  name: string; version: string; size: number; summary: string; auto: boolean;
+}
+export interface PackageSearchResult {
+  name: string; summary: string; installed: boolean;
+}
 
 export interface UserPublic {
   id: number; username: string; role: string;
