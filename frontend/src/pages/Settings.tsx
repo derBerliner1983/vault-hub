@@ -126,6 +126,11 @@ function PasswordPanel() {
   );
 }
 
+/** Base32-Secret in 4er-Gruppen für leichtere manuelle Eingabe am Handy. */
+function groupSecret(secret: string): string {
+  return (secret.match(/.{1,4}/g) ?? [secret]).join(' ');
+}
+
 /** Rendert eine otpauth://-URI als scanbaren QR-Code (SVG, weißer Hintergrund). */
 function QrCode({ value, size = 168 }: { value: string; size?: number }) {
   const svg = useMemo(() => {
@@ -222,12 +227,13 @@ function TwoFactorPanel() {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
               <QrCode value={setup.otpauth} />
             </div>
-            <div style={{ marginBottom: 8 }}>
-              <label className="form-label">{tt('Geheimer Schlüssel')}</label>
+            <div style={{ marginBottom: 12 }}>
+              <label className="form-label">{tt('Kein QR-Scan möglich? Schlüssel manuell eingeben')}</label>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <code style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 13, background: 'var(--color-surface-sunken)', padding: '8px 10px', borderRadius: 6, letterSpacing: '0.08em', wordBreak: 'break-all' }}>{setup.secret}</code>
+                <code style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 600, background: 'var(--color-surface-sunken)', padding: '10px 12px', borderRadius: 6, letterSpacing: '0.12em', wordBreak: 'break-all', textAlign: 'center' }}>{groupSecret(setup.secret)}</code>
                 <button className="btn btn--outline btn--icon btn--sm" title={tt('Kopieren')} onClick={() => navigator.clipboard?.writeText(setup.secret)}><Copy size={13} /></button>
               </div>
+              <div className="form-hint" style={{ marginTop: 4 }}>{tt('In der Authenticator-App „Schlüssel manuell eingeben" wählen und diesen Code eintippen (Leerzeichen ignorieren).')}</div>
             </div>
             <label className="form-label">{tt('Code aus der App zum Bestätigen')}</label>
             <div style={{ display: 'flex', gap: 8 }}>
