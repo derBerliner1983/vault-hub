@@ -34,6 +34,10 @@ export interface LinuxUser {
   username: string; uid: number; gid: number; home: string; shell: string; groups: string[]; system: boolean;
 }
 
+export interface Share {
+  name: string; path: string; readOnly: boolean; guestOk: boolean; browseable: boolean;
+}
+
 export interface AntivirusScan {
   running: boolean; path: string; startedAt?: string; finishedAt?: string;
   scanned: number; infectedCount: number; infected: { file: string; virus: string }[]; error?: string;
