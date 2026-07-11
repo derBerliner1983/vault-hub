@@ -1,17 +1,19 @@
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import qrcode from 'qrcode-generator';
 import {
-  KeyRound, ShieldCheck, ArrowUpCircle, RefreshCw, CheckCircle2, Server, Package, Globe, Puzzle,
+  KeyRound, ShieldCheck, ArrowUpCircle, RefreshCw, CheckCircle2, Package, Puzzle,
+  Languages, Smartphone, Copy, RotateCw,
 } from 'lucide-react';
 import { Topbar } from '../components/layout/Topbar';
+import { Panel } from '../components/ui/Panel';
+import { SortablePanels } from '../components/ui/SortablePanels';
 import { tt, useI18n, LANGUAGES } from '../lib/i18n';
+import { timeAgo } from '../lib/utils';
 import { api } from '../lib/api';
 import {
   fetchStore, fetchInstalledPlugins, installPlugin, useInstalledPlugins,
   type StoreItem, type PluginManifest,
 } from '../lib/plugins';
-
-type Tab = 'account' | 'extensions' | 'updates' | 'apps';
 
 interface VersionInfo {
   current: string; latest: string | null; updateAvailable: boolean;
@@ -20,22 +22,19 @@ interface VersionInfo {
 }
 
 export function Settings() {
-  const [tab, setTab] = useState<Tab>('account');
   return (
     <>
       <Topbar title={tt('Einstellungen')} />
       <div className="page">
         <RestartBanner />
-        <div className="tabs" style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--color-border)' }}>
-          <TabBtn active={tab === 'account'} onClick={() => setTab('account')} icon={<KeyRound size={15} />} label={tt('Account')} />
-          <TabBtn active={tab === 'extensions'} onClick={() => setTab('extensions')} icon={<Puzzle size={15} />} label={tt('Erweiterungen')} />
-          <TabBtn active={tab === 'updates'} onClick={() => setTab('updates')} icon={<ArrowUpCircle size={15} />} label={tt('Version & Updates')} />
-          <TabBtn active={tab === 'apps'} onClick={() => setTab('apps')} icon={<Package size={15} />} label={tt('Updatefähige Apps')} />
-        </div>
-        {tab === 'account' && <AccountPanel />}
-        {tab === 'extensions' && <ExtensionsPanel />}
-        {tab === 'updates' && <UpdatesPanel />}
-        {tab === 'apps' && <AppUpdatesPanel />}
+        <SortablePanels storageKey="settings" items={[
+          { id: 'password', node: <PasswordPanel /> },
+          { id: '2fa', node: <TwoFactorPanel /> },
+          { id: 'language', node: <LanguagePanel /> },
+          { id: 'extensions', node: <ExtensionsPanel /> },
+          { id: 'version', node: <VersionPanel /> },
+          { id: 'app-updates', node: <AppUpdatesPanel /> },
+        ]} />
       </div>
     </>
   );
@@ -59,7 +58,6 @@ function RestartBanner() {
   const restart = async () => {
     setRestarting(true);
     try { await fetch('/api/settings/restart', { method: 'POST', credentials: 'include' }); } catch { /* Verbindung bricht erwartungsgemäß ab */ }
-    // Warten, bis das Backend wieder erreichbar ist, dann neu laden.
     const waitUp = async (tries = 0): Promise<void> => {
       if (tries > 60) { window.location.reload(); return; }
       try {
@@ -74,7 +72,7 @@ function RestartBanner() {
   if (pending.length === 0) return null;
   const names = pending.map((p) => p.name).join(', ');
   return (
-    <div className="card" style={{ marginBottom: 16, borderLeft: '3px solid var(--color-warning)', display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className="card" style={{ marginBottom: 16, borderLeft: '3px solid var(--color-warning)', display: 'flex', alignItems: 'center', gap: 12, padding: 14 }}>
       <RefreshCw size={18} style={{ color: 'var(--color-warning)' }} />
       <div style={{ flex: 1, fontSize: 13 }}>
         <b>{tt('Neustart erforderlich')}</b> — {tt('Ein neu installiertes Plugin-Backend wird erst nach einem Neustart aktiv')}: {names}
@@ -86,24 +84,191 @@ function RestartBanner() {
   );
 }
 
-function TabBtn({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: ReactNode; label: string }) {
+// ─── Account: Passwort ändern ─────────────────────────────────────────────────
+
+function PasswordPanel() {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const save = async () => {
+    if (next !== confirm) { setMsg({ type: 'err', text: tt('Passwörter stimmen nicht überein.') }); return; }
+    if (next.length < 6) { setMsg({ type: 'err', text: tt('Neues Passwort zu kurz (min. 6 Zeichen).') }); return; }
+    setLoading(true); setMsg(null);
+    try {
+      await api.auth.changePassword(current, next);
+      setMsg({ type: 'ok', text: tt('Passwort geändert.') });
+      setCurrent(''); setNext(''); setConfirm('');
+    } catch (err) {
+      setMsg({ type: 'err', text: err instanceof Error ? err.message : tt('Fehler beim Ändern.') });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <button onClick={onClick} className="btn btn--ghost btn--sm"
-      style={{ borderRadius: 0, borderBottom: `2px solid ${active ? 'var(--color-accent)' : 'transparent'}`, color: active ? 'var(--color-fg)' : 'var(--color-subtle)', fontWeight: active ? 600 : 500 }}>
-      {icon} {label}
-    </button>
+    <Panel title={tt('Passwort ändern')} icon={<KeyRound size={15} />} subtitle={tt('Dein Vault-Hub Login')} storageKey="set-pw">
+      <div style={{ maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+        {msg && <div className="login-error" style={msg.type === 'ok' ? { background: 'var(--color-accent-soft)', borderColor: 'var(--color-accent)', color: 'var(--color-accent)' } : undefined}>{msg.text}</div>}
+        <div className="form-group"><label className="form-label">{tt('Aktuelles Passwort')}</label>
+          <input className="input input--rect" type="password" value={current} onChange={(e) => setCurrent(e.target.value)} /></div>
+        <div className="form-group"><label className="form-label">{tt('Neues Passwort')}</label>
+          <input className="input input--rect" type="password" value={next} onChange={(e) => setNext(e.target.value)} /></div>
+        <div className="form-group"><label className="form-label">{tt('Neues Passwort bestätigen')}</label>
+          <input className="input input--rect" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} /></div>
+        <button className="btn btn--primary btn--sm" style={{ alignSelf: 'flex-start' }} onClick={save} disabled={loading || !current || !next}>
+          {loading && <span className="spinner" style={{ width: 12, height: 12 }} />} {tt('Passwort speichern')}
+        </button>
+      </div>
+    </Panel>
   );
 }
 
-// ─── Account: Passwort ändern + 2FA (Kern-Funktion) ──────────────────────────
+/** Rendert eine otpauth://-URI als scanbaren QR-Code (SVG, weißer Hintergrund). */
+function QrCode({ value, size = 168 }: { value: string; size?: number }) {
+  const svg = useMemo(() => {
+    try {
+      const qr = qrcode(0, 'M');
+      qr.addData(value);
+      qr.make();
+      return qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+    } catch {
+      return '';
+    }
+  }, [value]);
 
-function AccountPanel() {
+  if (!svg) return null;
   return (
-    <div className="stats-grid">
-      <PasswordCard />
-      <TwoFactorCard />
-      <LanguageCard />
-    </div>
+    <div
+      style={{
+        width: size, height: size, padding: 10, background: '#fff',
+        borderRadius: 10, boxShadow: '0 0 0 1px var(--color-border)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+}
+
+function TwoFactorPanel() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [setup, setSetup] = useState<{ secret: string; otpauth: string } | null>(null);
+  const [code, setCode] = useState('');
+  const [pw, setPw] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  const load = useCallback(async () => {
+    try { setEnabled((await api.auth.twoFactor.status()).enabled); } catch { /* */ }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  const begin = async () => {
+    setBusy(true); setMsg(null);
+    try { setSetup(await api.auth.twoFactor.setup()); }
+    catch (err) { setMsg({ type: 'err', text: err instanceof Error ? err.message : 'Fehler' }); }
+    finally { setBusy(false); }
+  };
+
+  const activate = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      await api.auth.twoFactor.enable(code);
+      setSetup(null); setCode(''); setMsg({ type: 'ok', text: tt('2FA aktiviert. Beim nächsten Login wird ein Code abgefragt.') });
+      await load();
+    } catch (err) { setMsg({ type: 'err', text: err instanceof Error ? err.message : 'Fehler' }); }
+    finally { setBusy(false); }
+  };
+
+  const disable = async () => {
+    if (!pw) { setMsg({ type: 'err', text: tt('Passwort erforderlich') }); return; }
+    setBusy(true); setMsg(null);
+    try { await api.auth.twoFactor.disable(pw); setPw(''); setMsg({ type: 'ok', text: tt('2FA deaktiviert.') }); await load(); }
+    catch (err) { setMsg({ type: 'err', text: err instanceof Error ? err.message : 'Fehler' }); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Panel title={tt('Zwei-Faktor-Authentifizierung (2FA)')} icon={<ShieldCheck size={15} />}
+      subtitle={enabled === null ? undefined : enabled ? tt('aktiv') : tt('inaktiv')} storageKey="set-2fa"
+      actions={enabled !== null && (
+        <span className={`badge badge--${enabled ? 'running' : 'stopped'}`} style={{ height: 24, padding: '0 10px' }}>
+          <span className="badge__dot" /> {enabled ? tt('aktiv') : tt('inaktiv')}
+        </span>
+      )}
+    >
+      <div style={{ maxWidth: 460, marginTop: 8 }}>
+        {msg && <div className="login-error" style={msg.type === 'ok' ? { background: 'var(--color-accent-soft)', borderColor: 'var(--color-accent)', color: 'var(--color-accent)', marginBottom: 10 } : { marginBottom: 10 }}>{msg.text}</div>}
+
+        {enabled === null ? (
+          <span className="spinner" />
+        ) : enabled ? (
+          <>
+            <div style={{ fontSize: 12.5, color: 'var(--color-muted)', marginBottom: 10 }}>
+              {tt('Dein Konto ist mit einer Authenticator-App (TOTP) abgesichert. Zum Deaktivieren bitte Passwort eingeben.')}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input input--rect" type="password" placeholder={tt('Aktuelles Passwort')} value={pw} onChange={(e) => setPw(e.target.value)} style={{ flex: 1 }} />
+              <button className="btn btn--danger btn--sm" onClick={disable} disabled={busy}>{tt('2FA deaktivieren')}</button>
+            </div>
+          </>
+        ) : setup ? (
+          <>
+            <div style={{ fontSize: 12.5, color: 'var(--color-muted)', marginBottom: 12 }}>
+              <Smartphone size={13} style={{ verticalAlign: -2 }} /> {tt('Scanne den QR-Code mit deiner Authenticator-App (Google Authenticator, Aegis, 1Password …) – oder gib den geheimen Schlüssel manuell ein.')}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+              <QrCode value={setup.otpauth} />
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              <label className="form-label">{tt('Geheimer Schlüssel')}</label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <code style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 13, background: 'var(--color-surface-sunken)', padding: '8px 10px', borderRadius: 6, letterSpacing: '0.08em', wordBreak: 'break-all' }}>{setup.secret}</code>
+                <button className="btn btn--outline btn--icon btn--sm" title={tt('Kopieren')} onClick={() => navigator.clipboard?.writeText(setup.secret)}><Copy size={13} /></button>
+              </div>
+            </div>
+            <label className="form-label">{tt('Code aus der App zum Bestätigen')}</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input input--rect" inputMode="numeric" placeholder="000000" value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                style={{ flex: 1, letterSpacing: '0.3em', textAlign: 'center', fontFamily: 'var(--font-mono)' }} />
+              <button className="btn btn--primary btn--sm" onClick={activate} disabled={busy || code.length !== 6}>{tt('Aktivieren')}</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 12.5, color: 'var(--color-muted)', marginBottom: 12 }}>
+              {tt('Schütze deinen Login mit einem zusätzlichen Einmalcode aus einer Authenticator-App.')}
+            </div>
+            <button className="btn btn--primary btn--sm" onClick={begin} disabled={busy}>
+              {busy ? <span className="spinner" style={{ width: 12, height: 12 }} /> : <ShieldCheck size={13} />} {tt('2FA einrichten')}
+            </button>
+          </>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+function LanguagePanel() {
+  const { lang, setLang } = useI18n();
+  const change = (code: string) => {
+    setLang(code);
+    // tt-basierte Komponenten sind nicht reaktiv → einmal neu laden für sofortige Wirkung.
+    setTimeout(() => window.location.reload(), 50);
+  };
+  return (
+    <Panel title={tt('Sprache')} icon={<Languages size={15} />} subtitle={tt('Basis: Deutsch & Englisch. Weitere Sprachen kommen modular über den Store.')} storageKey="set-lang">
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+        {LANGUAGES.map((l) => (
+          <button key={l.code} className={`btn btn--sm ${lang === l.code ? 'btn--primary' : 'btn--outline'}`} onClick={() => change(l.code)}>
+            {l.flag ? <span style={{ fontSize: 15 }}>{l.flag}</span> : null} {l.label}
+          </button>
+        ))}
+      </div>
+    </Panel>
   );
 }
 
@@ -113,17 +278,19 @@ function ExtensionsPanel() {
   const { plugins, loading } = useInstalledPlugins();
   const exts = plugins.filter((p) => p.contributes?.serviceToggle || p.contributes?.settingsPanel);
 
-  if (loading) return <div style={{ display: 'grid', placeItems: 'center', padding: 48 }}><span className="spinner" /></div>;
-  if (exts.length === 0) {
-    return (
-      <div className="card empty-state" style={{ textAlign: 'center', padding: '40px 24px' }}>
-        <Puzzle size={26} style={{ color: 'var(--color-accent)' }} />
-        <div style={{ fontWeight: 600, marginTop: 8 }}>{tt('Keine System-Erweiterungen installiert')}</div>
-        <div style={{ color: 'var(--color-subtle)', marginTop: 4 }}>{tt('Installiere z. B. „SSH-Zugang" aus dem Store, dann erscheint hier der Schalter.')}</div>
-      </div>
-    );
-  }
-  return <div className="stats-grid">{exts.map((p) => <ExtensionCard key={p.id} plugin={p} />)}</div>;
+  return (
+    <Panel title={tt('Erweiterungen')} icon={<Puzzle size={15} />} subtitle={tt('System-Erweiterungen aus dem Store')} storageKey="set-extensions">
+      {loading ? (
+        <div style={{ display: 'grid', placeItems: 'center', padding: 32 }}><span className="spinner" /></div>
+      ) : exts.length === 0 ? (
+        <div className="empty-state" style={{ padding: '32px 20px', textAlign: 'center' }}>
+          <div className="empty-state__desc">{tt('Installiere z. B. „SSH-Zugang" aus dem Store, dann erscheint hier der Schalter.')}</div>
+        </div>
+      ) : (
+        <div className="stats-grid" style={{ marginTop: 8 }}>{exts.map((p) => <ExtensionCard key={p.id} plugin={p} />)}</div>
+      )}
+    </Panel>
+  );
 }
 
 function ExtensionCard({ plugin }: { plugin: PluginManifest }) {
@@ -158,7 +325,7 @@ function ExtensionCard({ plugin }: { plugin: PluginManifest }) {
   };
 
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
         <Puzzle size={16} /> {plugin.name}
         {svc && active !== null && (
@@ -183,196 +350,136 @@ function ExtensionCard({ plugin }: { plugin: PluginManifest }) {
   );
 }
 
-function LanguageCard() {
-  const { lang, setLang } = useI18n();
-  const change = (code: string) => {
-    setLang(code);
-    // tt-basierte Komponenten sind nicht reaktiv → einmal neu laden für sofortige Wirkung.
-    setTimeout(() => window.location.reload(), 50);
-  };
-  return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}><Globe size={16} /> {tt('Sprache')}</div>
-      <div style={{ fontSize: 13, color: 'var(--color-subtle)' }}>
-        {tt('Basis: Deutsch & Englisch. Weitere Sprachen kommen modular über den Store.')}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {LANGUAGES.map((l) => (
-          <button key={l.code} className={`btn btn--sm ${l.code === lang ? 'btn--primary' : 'btn--outline'}`} onClick={() => change(l.code)}>
-            {l.flag ? `${l.flag} ` : ''}{l.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function PasswordCard() {
-  const [cur, setCur] = useState('');
-  const [next, setNext] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const submit = async () => {
-    setMsg(null);
-    if (next.length < 6) { setMsg({ ok: false, text: tt('Neues Passwort zu kurz (min. 6 Zeichen).') }); return; }
-    if (next !== confirm) { setMsg({ ok: false, text: tt('Passwörter stimmen nicht überein.') }); return; }
-    setBusy(true);
-    try {
-      await api.auth.changePassword(cur, next);
-      setMsg({ ok: true, text: tt('Passwort geändert.') });
-      setCur(''); setNext(''); setConfirm('');
-    } catch (e) {
-      setMsg({ ok: false, text: e instanceof Error ? e.message : tt('Fehler beim Ändern.') });
-    } finally { setBusy(false); }
-  };
-
-  return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}><KeyRound size={16} /> {tt('Passwort ändern')}</div>
-      <input className="input" type="password" placeholder={tt('Aktuelles Passwort')} value={cur} onChange={(e) => setCur(e.target.value)} />
-      <input className="input" type="password" placeholder={tt('Neues Passwort')} value={next} onChange={(e) => setNext(e.target.value)} />
-      <input className="input" type="password" placeholder={tt('Neues Passwort bestätigen')} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-      {msg && <div style={{ fontSize: 13, color: msg.ok ? 'var(--color-success)' : 'var(--color-error)' }}>{msg.text}</div>}
-      <button className="btn btn--primary btn--sm" onClick={submit} disabled={busy || !cur || !next}>{tt('Speichern')}</button>
-    </div>
-  );
-}
-
-function TwoFactorCard() {
-  const [enabled, setEnabled] = useState<boolean | null>(null);
-  const [setup, setSetup] = useState<{ secret: string; otpauth: string } | null>(null);
-  const [qr, setQr] = useState('');
-  const [token, setToken] = useState('');
-  const [disablePw, setDisablePw] = useState('');
-  const [msg, setMsg] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const loadStatus = useCallback(async () => {
-    try { const s = await api.auth.twoFactor.status(); setEnabled(s.enabled); } catch { setEnabled(false); }
-  }, []);
-  useEffect(() => { void loadStatus(); }, [loadStatus]);
-
-  const startSetup = async () => {
-    setMsg(''); setBusy(true);
-    try {
-      const s = await api.auth.twoFactor.setup();
-      setSetup(s);
-      const qrGen = qrcode(0, 'M'); qrGen.addData(s.otpauth); qrGen.make();
-      setQr(qrGen.createDataURL(5));
-    } catch (e) { setMsg(e instanceof Error ? e.message : tt('Fehler')); }
-    finally { setBusy(false); }
-  };
-
-  const confirmEnable = async () => {
-    setMsg(''); setBusy(true);
-    try { await api.auth.twoFactor.enable(token); setSetup(null); setToken(''); await loadStatus(); }
-    catch (e) { setMsg(e instanceof Error ? e.message : tt('Code ungültig')); }
-    finally { setBusy(false); }
-  };
-
-  const disable = async () => {
-    setMsg(''); setBusy(true);
-    try { await api.auth.twoFactor.disable(disablePw); setDisablePw(''); await loadStatus(); }
-    catch (e) { setMsg(e instanceof Error ? e.message : tt('Fehler')); }
-    finally { setBusy(false); }
-  };
-
-  return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-        <ShieldCheck size={16} /> {tt('Zwei-Faktor-Authentifizierung')}
-        {enabled && <span className="badge badge--running" style={{ marginLeft: 'auto' }}>{tt('Aktiv')}</span>}
-      </div>
-      {enabled === null ? (
-        <span className="spinner" />
-      ) : enabled ? (
-        <>
-          <div style={{ fontSize: 13, color: 'var(--color-subtle)' }}>{tt('2FA ist aktiv. Zum Deaktivieren Passwort eingeben.')}</div>
-          <input className="input" type="password" placeholder={tt('Passwort')} value={disablePw} onChange={(e) => setDisablePw(e.target.value)} />
-          <button className="btn btn--danger btn--sm" onClick={disable} disabled={busy || !disablePw}>{tt('2FA deaktivieren')}</button>
-        </>
-      ) : setup ? (
-        <>
-          <div style={{ fontSize: 13, color: 'var(--color-subtle)' }}>{tt('QR-Code in der Authenticator-App scannen, dann 6-stelligen Code eingeben.')}</div>
-          {qr && <img src={qr} alt="2FA QR" style={{ width: 160, height: 160, alignSelf: 'center', borderRadius: 8, background: '#fff', padding: 6 }} />}
-          <input className="input" placeholder={tt('6-stelliger Code')} value={token} onChange={(e) => setToken(e.target.value)} maxLength={6} />
-          <button className="btn btn--primary btn--sm" onClick={confirmEnable} disabled={busy || token.length !== 6}>{tt('Aktivieren')}</button>
-        </>
-      ) : (
-        <>
-          <div style={{ fontSize: 13, color: 'var(--color-subtle)' }}>{tt('Zusätzliche Sicherheit per Authenticator-App (TOTP).')}</div>
-          <button className="btn btn--primary btn--sm" onClick={startSetup} disabled={busy}>{tt('2FA einrichten')}</button>
-        </>
-      )}
-      {msg && <div style={{ fontSize: 13, color: 'var(--color-error)' }}>{msg}</div>}
-    </div>
-  );
-}
-
 // ─── Version & Updates: Grundsystem (git-basiert, wie Core-Hub) ───────────────
 
-function UpdatesPanel() {
-  const [info, setInfo] = useState<VersionInfo | null>(null);
+function VersionPanel() {
+  const [ver, setVer] = useState<VersionInfo | null>(null);
   const [checking, setChecking] = useState(false);
-  const [log, setLog] = useState<string[]>([]);
   const [updating, setUpdating] = useState(false);
-  const esRef = useRef<EventSource | null>(null);
+  const [updateLog, setUpdateLog] = useState<string[]>([]);
+  const [updateDone, setUpdateDone] = useState(false);
+  const logRef = useRef<HTMLDivElement>(null);
 
   const check = useCallback(async (refresh = false) => {
     setChecking(true);
     try {
       const r = await fetch(`/api/settings/version${refresh ? '?refresh=1' : ''}`, { credentials: 'include' });
-      setInfo(await r.json());
+      setVer(await r.json());
     } catch { /* offline */ }
     finally { setChecking(false); }
   }, []);
   useEffect(() => { void check(false); }, [check]);
 
-  const runUpdate = () => {
-    setUpdating(true); setLog([]);
-    const es = new EventSource('/api/settings/update/stream', { withCredentials: true });
-    esRef.current = es;
-    es.onmessage = (e) => setLog((l) => [...l, e.data]);
-    es.onerror = () => { es.close(); setUpdating(false); void check(true); };
+  useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [updateLog]);
+
+  const pollForNewVersion = async (priorBuild?: string) => {
+    const started = Date.now();
+    while (Date.now() - started < 120_000) {
+      await new Promise((r) => setTimeout(r, 3000));
+      try {
+        const res = await fetch('/health', { cache: 'no-store' });
+        if (res.ok) {
+          const h = await res.json().catch(() => null) as { version?: string } | null;
+          const now = h?.version;
+          if (now && priorBuild && now !== priorBuild) {
+            setUpdateLog((l) => [...l, `✓ ${tt('Neue Version')} v${now} ${tt('aktiv – lade Seite neu…')}`]);
+            setTimeout(() => location.reload(), 1000);
+            return;
+          }
+        }
+      } catch { /* Dienst noch nicht erreichbar */ }
+    }
   };
-  useEffect(() => () => { esRef.current?.close(); }, []);
+
+  const startUpdate = () => {
+    if (!confirm(tt('Vault-Hub jetzt aktualisieren? Der Dienst wird kurz neu gestartet.'))) return;
+    setUpdating(true); setUpdateDone(false);
+    setUpdateLog(['▶ ' + tt('Update gestartet…')]);
+    const priorBuild = ver?.current;
+    let finished = false;
+
+    const onDone = () => {
+      if (finished) return;
+      finished = true;
+      setUpdateLog((l) => [...l, '', '✓ ' + tt('Installation abgeschlossen. Vault-Hub wird neu gestartet…')]);
+      setUpdating(false); setUpdateDone(true);
+      void check(false);
+      void pollForNewVersion(priorBuild);
+    };
+
+    const es = new EventSource('/api/settings/update/stream', { withCredentials: true });
+    es.onmessage = (evt) => {
+      try { const d = JSON.parse(evt.data) as { line: string }; setUpdateLog((l) => [...l, d.line]); }
+      catch { /* */ }
+    };
+    es.addEventListener('done', () => { es.close(); onDone(); });
+    es.onerror = () => { es.close(); onDone(); };
+  };
 
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 40, height: 40, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}><Server size={20} /></div>
-        <div style={{ lineHeight: 1.25 }}>
-          <div style={{ fontWeight: 700, fontSize: 18 }}>Vault-Hub v{info?.current ?? '…'}</div>
-          <div style={{ fontSize: 12, color: 'var(--color-faint)' }}>
-            {info?.repo ? `${tt('Repository')}: ${info.repo}` : ''}{info?.checkedAt ? ` · ${tt('geprüft')}: ${new Date(info.checkedAt).toLocaleTimeString()}` : ''}
-          </div>
+    <Panel title={tt('Version & Updates')} icon={<ArrowUpCircle size={15} />} subtitle={ver ? `v${ver.current}` : undefined} storageKey="set-version"
+      actions={
+        <button className="btn btn--outline btn--sm" disabled={checking} onClick={() => check(true)}>
+          {checking ? <span className="spinner" style={{ width: 12, height: 12 }} /> : <RefreshCw size={13} />} {tt('Prüfen')}
+        </button>
+      }
+    >
+      <div style={{ marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 22, fontWeight: 700 }}>Vault-Hub v{ver?.current ?? '…'}</span>
+          {ver && ver.updateAvailable && (
+            <span className="badge badge--restarting" style={{ height: 26, padding: '0 12px' }}>
+              <ArrowUpCircle size={13} /> {tt('Update verfügbar')}: {ver.latest}
+            </span>
+          )}
+          {ver && !ver.updateAvailable && !ver.error && (
+            <span className="badge badge--running" style={{ height: 26, padding: '0 12px' }}>
+              <CheckCircle2 size={13} /> {tt('Aktuell')}
+            </span>
+          )}
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-          {info && (info.updateAvailable
-            ? <span className="badge badge--restarting">{tt('Update verfügbar')}{info.latest ? ` (${info.latest})` : ''}</span>
-            : <span className="badge badge--running"><CheckCircle2 size={13} /> {tt('Aktuell')}</span>)}
-          <button className="btn btn--outline btn--sm" onClick={() => check(true)} disabled={checking}>
-            <RefreshCw size={14} style={checking ? { animation: 'spin 1s linear infinite' } : undefined} /> {tt('Prüfen')}
-          </button>
+
+        {ver?.error && <div style={{ fontSize: 12.5, color: 'var(--color-warning)', marginTop: 10 }}>{tt('Versionsprüfung')}: {ver.error}</div>}
+
+        {ver?.updateAvailable && !updating && !updateDone && (
+          <div className="card" style={{ marginTop: 14, borderColor: 'var(--color-warning)', padding: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{tt('Neue Version')} {ver.latest} {tt('verfügbar')}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--color-muted)', marginBottom: 10 }}>
+              {tt('Vault-Hub automatisch aktualisieren: neuen Code holen, Abhängigkeiten installieren und Dienst neu starten. Deine Daten bleiben erhalten.')}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn btn--primary btn--sm" onClick={startUpdate}>
+                <ArrowUpCircle size={13} /> {tt('Jetzt aktualisieren')}
+              </button>
+              {ver.releaseUrl && (
+                <a className="btn btn--outline btn--sm" href={ver.releaseUrl} target="_blank" rel="noreferrer">
+                  {tt('Release-Notes ansehen')}
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {(updating || updateDone) && updateLog.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div ref={logRef} style={{ fontFamily: 'monospace', fontSize: 12, background: 'var(--color-surface-sunken)', border: '1px solid var(--color-border)', borderRadius: 6, padding: '10px 14px', maxHeight: 300, overflowY: 'auto', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+              {updateLog.join('\n')}
+              {updating && <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block', marginLeft: 6 }}>⟳</span>}
+            </div>
+            {updateDone && (
+              <button className="btn btn--primary btn--sm" style={{ marginTop: 10 }} onClick={() => location.reload()}>
+                <RotateCw size={13} /> {tt('Seite neu laden')}
+              </button>
+            )}
+          </div>
+        )}
+
+        <div style={{ fontSize: 11.5, color: 'var(--color-faint)', marginTop: 12 }}>
+          {tt('Repository')}: {ver?.repo ?? '—'}
+          {ver ? ` · ${tt('zuletzt geprüft')} ${timeAgo(new Date(ver.checkedAt).getTime() / 1000)}` : ''}
         </div>
       </div>
-
-      {info?.error && <div style={{ fontSize: 13, color: 'var(--color-warning)' }}>{info.error}</div>}
-
-      {info?.updateAvailable && (
-        <button className="btn btn--primary" onClick={runUpdate} disabled={updating}>
-          <ArrowUpCircle size={15} /> {updating ? tt('Aktualisiere…') : tt('Jetzt aktualisieren')}
-        </button>
-      )}
-
-      {log.length > 0 && (
-        <pre style={{ background: 'var(--color-surface-sunken)', borderRadius: 8, padding: 12, fontSize: 12, maxHeight: 260, overflow: 'auto', margin: 0 }}>
-          {log.join('\n')}
-        </pre>
-      )}
-    </div>
+    </Panel>
   );
 }
 
@@ -387,7 +494,6 @@ function AppUpdatesPanel() {
     setLoading(true);
     const [store, inst] = await Promise.all([fetchStore(), fetchInstalledPlugins()]);
     const instMap = new Map(inst.map((p) => [p.id, p.version]));
-    // Nur installierte Apps mit verfügbarem Update.
     const updatable = store.items.filter((s) => instMap.has(s.id) && (s.updateAvailable || (instMap.get(s.id) !== s.version)));
     setItems(updatable);
     setLoading(false);
@@ -402,38 +508,38 @@ function AppUpdatesPanel() {
     for (const it of items) { await update(it.id, it.source); }
   };
 
-  if (loading) return <div style={{ display: 'grid', placeItems: 'center', padding: 48 }}><span className="spinner" /></div>;
-
-  if (items.length === 0) {
-    return (
-      <div className="card empty-state" style={{ textAlign: 'center', padding: '40px 24px' }}>
-        <CheckCircle2 size={28} style={{ color: 'var(--color-success)' }} />
-        <div style={{ fontWeight: 600, marginTop: 8 }}>{tt('Alle Apps sind aktuell')}</div>
-        <div style={{ color: 'var(--color-subtle)', marginTop: 4 }}>{tt('Installierte Plugins mit verfügbarem Update erscheinen hier.')}</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <div style={{ fontWeight: 600 }}>{items.length} {tt('Update(s) verfügbar')}</div>
-        <button className="btn btn--primary btn--sm" style={{ marginLeft: 'auto' }} onClick={updateAll} disabled={busy !== null}>
+    <Panel title={tt('Updatefähige Apps')} icon={<Package size={15} />} subtitle={items.length ? `${items.length} ${tt('Update(s) verfügbar')}` : undefined} storageKey="set-app-updates"
+      actions={items.length > 0 && (
+        <button className="btn btn--primary btn--sm" onClick={updateAll} disabled={busy !== null}>
           <ArrowUpCircle size={14} /> {tt('Alle aktualisieren')}
         </button>
-      </div>
-      {items.map((it) => (
-        <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--color-border)' }}>
-          <Package size={16} style={{ color: 'var(--color-accent)' }} />
-          <div style={{ lineHeight: 1.2 }}>
-            <div style={{ fontWeight: 600 }}>{it.name}</div>
-            <div style={{ fontSize: 11, color: 'var(--color-faint)' }}>→ v{it.version}</div>
-          </div>
-          <button className="btn btn--outline btn--sm" style={{ marginLeft: 'auto' }} onClick={() => update(it.id, it.source)} disabled={busy === it.id}>
-            {busy === it.id ? tt('…') : tt('Aktualisieren')}
-          </button>
+      )}
+    >
+      {loading ? (
+        <div style={{ display: 'grid', placeItems: 'center', padding: 32 }}><span className="spinner" /></div>
+      ) : items.length === 0 ? (
+        <div className="empty-state" style={{ padding: '32px 20px', textAlign: 'center' }}>
+          <CheckCircle2 size={26} style={{ color: 'var(--color-success)' }} />
+          <div className="empty-state__title" style={{ marginTop: 8 }}>{tt('Alle Apps sind aktuell')}</div>
+          <div className="empty-state__desc">{tt('Installierte Plugins mit verfügbarem Update erscheinen hier.')}</div>
         </div>
-      ))}
-    </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', marginTop: 6 }}>
+          {items.map((it) => (
+            <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: '1px solid var(--color-border)' }}>
+              <Package size={16} style={{ color: 'var(--color-accent)' }} />
+              <div style={{ lineHeight: 1.2 }}>
+                <div style={{ fontWeight: 600 }}>{it.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-faint)' }}>→ v{it.version}</div>
+              </div>
+              <button className="btn btn--outline btn--sm" style={{ marginLeft: 'auto' }} onClick={() => update(it.id, it.source)} disabled={busy === it.id}>
+                {busy === it.id ? tt('…') : tt('Aktualisieren')}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
   );
 }
