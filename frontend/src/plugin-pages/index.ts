@@ -8,6 +8,7 @@ import { PackagesPage } from './PackagesPage';
 import { FileManagerPage } from './FileManagerPage';
 import { SharesPage } from './SharesPage';
 import { AutomationPage } from './AutomationPage';
+import { BackupsPage } from './BackupsPage';
 
 // Native Feature-Seiten (aus Core-Hub portiert), pro Plugin-ID. Ist eine ID hier
 // registriert UND das Plugin installiert, rendert die Shell diese native Seite
@@ -23,4 +24,5 @@ export const pluginPages: Record<string, ComponentType> = {
   filemanager: FileManagerPage,
   shares: SharesPage,
   automation: AutomationPage,
+  backups: BackupsPage,
 };

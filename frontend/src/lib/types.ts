@@ -34,6 +34,14 @@ export interface LinuxUser {
   username: string; uid: number; gid: number; home: string; shell: string; groups: string[]; system: boolean;
 }
 
+export interface Backup {
+  id: string; type: string; name: string; source: string; path: string; file: string; size: number; created_at: string;
+}
+export interface BackupSchedule {
+  id: string; source: string; label: string; schedule: string; retention: number;
+  enabled: boolean; last_run: string | null; last_status: string | null;
+}
+
 export interface CronJob {
   id: number; schedule: string; command: string; comment: string; raw: string;
 }
