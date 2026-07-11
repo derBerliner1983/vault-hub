@@ -158,35 +158,6 @@ export async function authRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Admin: 2FA für einen Benutzer erzwingen bzw. Pflicht aufheben.
-  fastify.post<{ Params: { id: string }; Body: { required: boolean } }>(
-    '/api/users/:id/2fa/require',
-    { preHandler: requireAdmin },
-    async (req, reply) => {
-      const id = parseInt(req.params.id);
-      const target = userQueries.getById.get(id);
-      if (!target) return reply.status(404).send({ error: 'Benutzer nicht gefunden' });
-      userQueries.setTotpRequired.run(req.body?.required ? 1 : 0, id);
-      auditQueries.log.run(req.user.id, req.body?.required ? '2fa.require' : '2fa.unrequire', target.username);
-      reply.send({ ok: true });
-    }
-  );
-
-  // Admin: 2FA eines Benutzers zurücksetzen (z. B. bei verlorenem Gerät).
-  fastify.post<{ Params: { id: string } }>(
-    '/api/users/:id/2fa/reset',
-    { preHandler: requireAdmin },
-    async (req, reply) => {
-      const id = parseInt(req.params.id);
-      const target = userQueries.getById.get(id);
-      if (!target) return reply.status(404).send({ error: 'Benutzer nicht gefunden' });
-      userQueries.setTotpEnabled.run(0, id);
-      userQueries.setTotpSecret.run(null, id);
-      auditQueries.log.run(req.user.id, '2fa.reset', target.username);
-      reply.send({ ok: true });
-    }
-  );
-
   fastify.post<{ Body: { currentPassword: string; newPassword: string } }>(
     '/api/auth/change-password',
     { preHandler: requireAuth },
