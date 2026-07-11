@@ -66,6 +66,30 @@ module.exports.register = function register(fastify, ctx) {
     } catch (err) { reply.status(500).send({ error: err instanceof Error ? err.message : 'Crontab-Fehler' }); }
   });
 
+  // Autostart: systemd-Units beim Systemstart aktivieren/deaktivieren.
+  fastify.get(P + '/units', async (req, reply) => {
+    if (!(await auth(req, reply))) return;
+    const output = ctx.safeExec('systemctl list-unit-files --type=service --state=enabled,disabled --no-pager --no-legend --plain 2>/dev/null | head -200', 6000);
+    const units = output.split('\n').filter((l) => l.trim()).map((line) => {
+      const parts = line.trim().split(/\s+/);
+      return { name: parts[0] || '', state: parts[1] || '' };
+    }).filter((u) => u.name.endsWith('.service'));
+    reply.send({ units });
+  });
+
+  fastify.post(P + '/units/control', async (req, reply) => {
+    if (!(await auth(req, reply, true))) return;
+    const { service, action } = req.body || {};
+    if (!['enable', 'disable'].includes(action)) return reply.status(400).send({ error: 'Ungültige Aktion' });
+    const safeName = String(service || '').replace(/[^a-zA-Z0-9@._-]/g, '');
+    if (!safeName) return reply.status(400).send({ error: 'Ungültiger Dienst' });
+    try {
+      ctx.privExec(`systemctl ${action} ${safeName}`, { timeout: 10000 });
+      ctx.audit(req.user.id, 'unit.' + action, safeName);
+      reply.send({ ok: true });
+    } catch (err) { reply.status(500).send({ error: err instanceof Error ? err.message : 'systemctl-Fehler' }); }
+  });
+
   fastify.put(P + '/raw', async (req, reply) => {
     if (!(await auth(req, reply, true))) return;
     const raw = req.body && req.body.raw;

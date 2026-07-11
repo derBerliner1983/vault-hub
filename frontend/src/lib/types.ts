@@ -34,6 +34,13 @@ export interface LinuxUser {
   username: string; uid: number; gid: number; home: string; shell: string; groups: string[]; system: boolean;
 }
 
+export interface CronJob {
+  id: number; schedule: string; command: string; comment: string; raw: string;
+}
+export interface AutostartUnit {
+  name: string; state: string;
+}
+
 export interface Share {
   name: string; path: string; readOnly: boolean; guestOk: boolean; browseable: boolean;
 }
