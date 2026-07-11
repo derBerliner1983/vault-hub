@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { useParams } from 'react-router-dom';
 import { Topbar } from '../components/layout/Topbar';
 import { tt } from '../lib/i18n';
@@ -20,7 +21,11 @@ export function PluginApp() {
   // Native Seite bevorzugen (nur wenn das Plugin installiert ist → Store schaltet frei).
   const Native = id ? pluginPages[id] : undefined;
   if (plugin && Native) {
-    return <Native />;
+    return (
+      <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', height: '100%' }}><span className="spinner" /></div>}>
+        <Native />
+      </Suspense>
+    );
   }
 
   if (!plugin) {

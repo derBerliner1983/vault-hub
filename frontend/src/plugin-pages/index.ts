@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import { lazy, type ComponentType } from 'react';
 import { DashboardPage } from './DashboardPage';
 import { TaskManagerPage } from './TaskManagerPage';
 import { AntivirusPage } from './AntivirusPage';
@@ -9,6 +9,8 @@ import { FileManagerPage } from './FileManagerPage';
 import { SharesPage } from './SharesPage';
 import { AutomationPage } from './AutomationPage';
 import { BackupsPage } from './BackupsPage';
+// Terminal lädt xterm (~290 KB) → lazy, damit es nur beim Öffnen geladen wird.
+const TerminalPage = lazy(() => import('./TerminalPage').then((m) => ({ default: m.TerminalPage })));
 
 // Native Feature-Seiten (aus Core-Hub portiert), pro Plugin-ID. Ist eine ID hier
 // registriert UND das Plugin installiert, rendert die Shell diese native Seite
@@ -25,4 +27,5 @@ export const pluginPages: Record<string, ComponentType> = {
   shares: SharesPage,
   automation: AutomationPage,
   backups: BackupsPage,
+  terminal: TerminalPage,
 };
